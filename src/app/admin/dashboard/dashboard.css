@@ -1,0 +1,215 @@
+/* Mobile-first responsive design for admin dashboard */
+
+/* Ensure proper text truncation on mobile */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Line clamp for descriptions */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Mobile-specific spacing adjustments */
+@media (max-width: 640px) {
+  .dashboard-container {
+    padding: 0.75rem;
+  }
+  
+  .metric-card {
+    min-height: 120px;
+  }
+  
+  .action-card {
+    padding: 0.75rem;
+  }
+  
+  .quick-action-button {
+    padding: 0.75rem;
+  }
+}
+
+/* Touch-friendly button sizes on mobile */
+@media (max-width: 640px) {
+  button {
+    min-height: 44px; /* iOS recommended touch target size */
+  }
+  
+  .metric-card {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  
+  .metric-card:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Improved scrolling on mobile */
+@media (max-width: 640px) {
+  .dashboard-content {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Better mobile grid layouts */
+@media (max-width: 640px) {
+  .mobile-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* Mobile-optimized typography */
+@media (max-width: 640px) {
+  .mobile-text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  .mobile-text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+}
+
+/* Improved mobile spacing */
+@media (max-width: 640px) {
+  .mobile-space-y-3 > * + * {
+    margin-top: 0.75rem;
+  }
+  
+  .mobile-space-y-4 > * + * {
+    margin-top: 1rem;
+  }
+}
+
+/* Mobile-friendly card shadows */
+@media (max-width: 640px) {
+  .mobile-card {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* Better mobile hover states */
+@media (hover: none) {
+  .mobile-card:hover {
+    transform: none;
+  }
+  
+  .mobile-button:hover {
+    background-color: inherit;
+  }
+}
+
+/* Mobile-optimized loading states */
+@media (max-width: 640px) {
+  .mobile-loading {
+    padding: 2rem 1rem;
+  }
+}
+
+/* Improved mobile form elements */
+@media (max-width: 640px) {
+  .mobile-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Better mobile navigation */
+@media (max-width: 640px) {
+  .mobile-nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+  }
+}
+
+/* Mobile-optimized data tables */
+@media (max-width: 640px) {
+  .mobile-table {
+    font-size: 0.875rem;
+  }
+  
+  .mobile-table th,
+  .mobile-table td {
+    padding: 0.5rem 0.25rem;
+  }
+}
+
+/* Better mobile modals */
+@media (max-width: 640px) {
+  .mobile-modal {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}
+
+/* Mobile-friendly tooltips */
+@media (max-width: 640px) {
+  .mobile-tooltip {
+    display: none; /* Hide tooltips on mobile for better UX */
+  }
+}
+
+/* Improved mobile accessibility */
+@media (max-width: 640px) {
+  .mobile-focus:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+}
+
+/* Mobile-optimized animations */
+@media (max-width: 640px) {
+  .mobile-animate {
+    animation-duration: 0.2s;
+  }
+}
+
+/* Better mobile color contrast */
+@media (max-width: 640px) {
+  .mobile-text {
+    color: #1f2937; /* Better contrast on mobile */
+  }
+  
+  .mobile-text-secondary {
+    color: #4b5563;
+  }
+}
+
+/* Mobile-friendly spacing utilities */
+@media (max-width: 640px) {
+  .mobile-p-2 {
+    padding: 0.5rem;
+  }
+  
+  .mobile-p-3 {
+    padding: 0.75rem;
+  }
+  
+  .mobile-p-4 {
+    padding: 1rem;
+  }
+  
+  .mobile-m-2 {
+    margin: 0.5rem;
+  }
+  
+  .mobile-m-3 {
+    margin: 0.75rem;
+  }
+  
+  .mobile-m-4 {
+    margin: 1rem;
+  }
+}
