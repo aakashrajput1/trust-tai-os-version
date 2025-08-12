@@ -1,163 +1,144 @@
-# Email Service Setup for User Invitations
+# Email Configuration Setup Guide
 
-This document explains how to set up the email service for sending user invitation emails when creating new users through the admin dashboard.
+This guide will help you configure email confirmations to use your Vercel deployment URL: `https://trust-tai-os-version.vercel.app/`
 
-## Overview
+## 1. Environment Variables Setup
 
-When an admin creates a new user through the "Add User" modal, the system will:
-1. Create the user account in the database
-2. Generate a secure temporary password
-3. Send an invitation email with login credentials
-4. The user can then log in using their email and the temporary password
-
-## Environment Variables
-
-Add the following environment variables to your `.env.local` file:
+### Local Development (.env.local)
+Create a `.env.local` file in your project root with the following variables:
 
 ```bash
-# Database Configuration
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 
-# Application Configuration
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Application URL Configuration
+NEXT_PUBLIC_APP_URL=https://trust-tai-os-version.vercel.app
 
-# Email Service Configuration
-# Choose one of the following email providers:
-```
-
-## Email Provider Options
-
-### 1. Mock Email Service (Development)
-For development and testing, use the mock service that logs emails to the console:
-
-```bash
+# Email Configuration
 EMAIL_PROVIDER=mock
 ```
 
-### 2. SendGrid
-For production use with SendGrid:
+### Vercel Deployment
+Add these environment variables in your Vercel dashboard:
+
+1. Go to your Vercel project dashboard
+2. Navigate to Settings > Environment Variables
+3. Add the following variables:
+   - `NEXT_PUBLIC_APP_URL`: `https://trust-tai-os-version.vercel.app`
+   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anon key
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
+
+## 2. Supabase Configuration
+
+### Site URL Configuration
+1. Go to your Supabase dashboard
+2. Navigate to Authentication > URL Configuration
+3. Set the following URLs:
+   - **Site URL**: `https://trust-tai-os-version.vercel.app`
+   - **Redirect URLs**: 
+     - `https://trust-tai-os-version.vercel.app/auth/callback`
+     - `https://trust-tai-os-version.vercel.app/dashboard`
+     - `https://trust-tai-os-version.vercel.app/onboarding`
+
+### Email Templates (Optional)
+If you want to customize email templates in Supabase:
+
+1. Go to Authentication > Email Templates
+2. Update the templates to use your Vercel URL:
+   - **Confirm signup**: `https://trust-tai-os-version.vercel.app/auth/callback?token={{ .Token }}&type=email_confirmation`
+   - **Reset password**: `https://trust-tai-os-version.vercel.app/auth/callback?token={{ .Token }}&type=password_reset`
+   - **Magic link**: `https://trust-tai-os-version.vercel.app/auth/callback?token={{ .Token }}&type=magic_link`
+
+## 3. Email Provider Setup
+
+### Option 1: Use Supabase Built-in Email (Recommended)
+Supabase provides email functionality out of the box. No additional setup required.
+
+### Option 2: Custom Email Provider
+If you want to use a custom email provider, update your `.env.local`:
 
 ```bash
+# For SendGrid
 EMAIL_PROVIDER=sendgrid
-SENDGRID_API_KEY=your_sendgrid_api_key_here
-```
+SENDGRID_API_KEY=your_sendgrid_api_key
 
-Install the package:
-```bash
-npm install @sendgrid/mail
-```
-
-### 3. AWS SES
-For production use with Amazon SES:
-
-```bash
+# For AWS SES
 EMAIL_PROVIDER=aws-ses
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_aws_access_key_id_here
-AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key_here
-```
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
 
-Install the package:
-```bash
-npm install @aws-sdk/client-ses
-```
-
-### 4. SMTP (Nodemailer)
-For production use with any SMTP server:
-
-```bash
+# For SMTP (Gmail, etc.)
 EMAIL_PROVIDER=nodemailer
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_app_password_here
+SMTP_PASS=your_app_password
 ```
 
-Install the package:
-```bash
-npm install nodemailer
-```
+## 4. Testing Email Confirmations
 
-## How It Works
+### Test Email Confirmation Flow
+1. Deploy your application to Vercel
+2. Go to `https://trust-tai-os-version.vercel.app/onboarding`
+3. Create a new account with a valid email
+4. Check your email for the confirmation link
+5. Click the link - it should redirect to your Vercel deployment
 
-### 1. User Creation Flow
-1. Admin fills out the "Add User" modal with:
-   - Full Name (required)
-   - Email Address (required)
-   - Role (required)
-   - Department (optional)
-   - Position (optional)
+### Test Password Reset Flow
+1. Go to the login page
+2. Click "Forgot password?"
+3. Enter your email
+4. Check your email for the reset link
+5. Click the link - it should redirect to your Vercel deployment
 
-2. Admin clicks "Create User"
+## 5. Troubleshooting
 
-3. System processes the request:
-   - Validates required fields
-   - Checks if user already exists
-   - Generates a secure 12-character temporary password
-   - Creates user account in database
-   - Sends invitation email
-   - Logs the action in audit trail
+### Common Issues
 
-### 2. Email Content
-The invitation email includes:
-- Welcome message
-- User's name and email
-- Temporary password
-- Login button
-- Security reminder to change password
-- Support contact information
+**Issue**: Email links redirect to localhost instead of Vercel URL
+**Solution**: Make sure `NEXT_PUBLIC_APP_URL` is set correctly in both local and Vercel environment variables
 
-### 3. User Login
-The invited user can:
-- Go to the login page
-- Use their email address
-- Use the temporary password from the email
-- Log in successfully
-- Be prompted to change their password
+**Issue**: Supabase authentication errors
+**Solution**: Verify that your Supabase site URL and redirect URLs are correctly configured
 
-## Security Features
+**Issue**: Email not sending
+**Solution**: Check your email provider configuration and ensure the service is properly set up
 
-- **Temporary Passwords**: 12 characters with mixed case, numbers, and symbols
-- **Password Expiry**: Users are encouraged to change password after first login
-- **Audit Logging**: All user creation actions are logged
-- **Duplicate Prevention**: System checks for existing users before creation
+### Debug Mode
+To debug email issues, set `EMAIL_PROVIDER=mock` in your environment variables. This will log emails to the console instead of sending them.
 
-## Testing
+## 6. Security Considerations
 
-### Mock Service
-With the mock service, emails are logged to the console. Check your terminal/console when creating users.
+- Always use HTTPS URLs in production
+- Keep your Supabase service role key secure
+- Regularly rotate API keys
+- Monitor email delivery rates
+- Set appropriate token expiration times
 
-### Real Email Service
-With a real email service configured, actual emails will be sent to the specified email addresses.
+## 7. Production Checklist
 
-## Troubleshooting
+- [ ] Environment variables set in Vercel
+- [ ] Supabase site URL configured
+- [ ] Redirect URLs added to Supabase
+- [ ] Email templates updated (if using custom templates)
+- [ ] Email provider configured (if not using Supabase built-in)
+- [ ] Test email confirmation flow
+- [ ] Test password reset flow
+- [ ] Test magic link flow (if enabled)
 
-### Email Not Sending
-1. Check environment variables are set correctly
-2. Verify email provider credentials
-3. Check console for error messages
-4. Ensure the email service package is installed
+## 8. Monitoring
 
-### User Creation Fails
-1. Check database connection
-2. Verify required fields are filled
-3. Check for duplicate email addresses
-4. Review server logs for errors
+Monitor your email delivery and authentication flows:
+- Check Vercel function logs for email-related errors
+- Monitor Supabase authentication logs
+- Track email delivery rates in your email provider dashboard
+- Set up alerts for authentication failures
 
-## Production Considerations
+---
 
-1. **Email Templates**: Customize email content for your brand
-2. **Rate Limiting**: Implement rate limiting for user creation
-3. **Email Verification**: Consider adding email verification step
-4. **Password Policies**: Implement strong password requirements
-5. **Monitoring**: Set up monitoring for email delivery rates
-
-## Support
-
-For issues or questions:
-1. Check the console logs
-2. Verify environment configuration
-3. Test with mock service first
-4. Review the API endpoint logs
+**Note**: The email templates in `src/lib/emailTemplates.ts` are automatically configured to use the `NEXT_PUBLIC_APP_URL` environment variable. Make sure this is set correctly for your deployment.
