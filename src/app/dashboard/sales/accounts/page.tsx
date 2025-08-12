@@ -596,7 +596,7 @@ export default function ClientAccounts() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{account.openOpportunities}</div>
                     <div className="text-xs text-gray-500">{account.totalDeals} total deals</div>
-                  </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(account.status)}
                   </td>
