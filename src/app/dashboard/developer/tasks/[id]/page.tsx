@@ -225,7 +225,7 @@ export default function TaskDetailPage() {
 
     // Extract mentions
     const mentionRegex = /@([a-zA-Z0-9-]+)/g
-    const mentions = [...newComment.matchAll(mentionRegex)].map(match => match[1])
+    const mentions = Array.from(newComment.matchAll(mentionRegex)).map(match => match[1])
 
     const comment = {
       id: Date.now(),

@@ -218,18 +218,30 @@ export default function ClientDetailPage() {
   }
 
   const handleExportClient = (format: string) => {
-    addNotification('Export', `Exporting client data as ${format.toUpperCase()}...`, 'info')
+    addNotification({
+      type: 'info',
+      title: 'Export',
+      message: `Exporting client data as ${format.toUpperCase()}...`
+    })
     // Here you would typically trigger the actual export
   }
 
   const handleShareClient = () => {
-    addNotification('Share', 'Opening share options...', 'info')
+    addNotification({
+      type: 'info',
+      title: 'Share',
+      message: 'Opening share options...'
+    })
     // Here you would typically open a modal to share the client
   }
 
   const handleDeleteClient = () => {
     if (confirm('Are you sure you want to delete this client? This action cannot be undone.')) {
-      addNotification('Client Deleted', 'Client has been deleted', 'success')
+      addNotification({
+        type: 'success',
+        title: 'Client Deleted',
+        message: 'Client has been deleted'
+      })
       router.push('/dashboard/sales/clients')
     }
   }

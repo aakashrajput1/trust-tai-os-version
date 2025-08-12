@@ -170,18 +170,22 @@ export default function RecruitmentPage() {
     
     const candidate = candidates.find(c => c.id === candidateId)
     if (candidate) {
-      addNotification(
-        'Candidate Updated', 
-        `${candidate.name} moved to ${newStage} stage.`, 
-        'success'
-      )
+      addNotification({
+        type: 'success',
+        title: 'Candidate Updated',
+        message: `${candidate.name} moved to ${newStage} stage.`
+      })
     }
   }
 
   const deleteJobPosting = (jobId: string, jobTitle: string) => {
     if (confirm(`Are you sure you want to delete the job posting: ${jobTitle}?`)) {
       setJobPostings(prev => prev.filter(job => job.id !== jobId))
-      addNotification('Job Posting Deleted', `${jobTitle} has been removed.`, 'success')
+      addNotification({
+      type: 'success',
+      title: 'Job Posting Deleted',
+      message: `${jobTitle} has been removed.`
+    })
     }
   }
 
@@ -192,7 +196,11 @@ export default function RecruitmentPage() {
   }
 
   const scheduleInterview = (candidateId: string, candidateName: string) => {
-    addNotification('Interview Scheduling', `Opening calendar to schedule interview for ${candidateName}...`, 'info')
+    addNotification({
+      type: 'info',
+      title: 'Interview Scheduling',
+      message: `Opening calendar to schedule interview for ${candidateName}...`
+    })
     // In a real app, this would open a calendar/scheduling modal
   }
 

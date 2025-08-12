@@ -96,7 +96,11 @@ export default function HRReportsAnalytics() {
   const { addNotification } = useNotifications()
 
   const handleExportReport = (type: string) => {
-    addNotification('Export Started', `Generating ${type} report...`, 'info')
+    addNotification({
+      type: 'info',
+      title: 'Export Started',
+      message: `Generating ${type} report...`
+    })
     // In real implementation, this would generate and download the report
   }
 

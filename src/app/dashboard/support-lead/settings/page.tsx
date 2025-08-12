@@ -20,7 +20,6 @@ import {
   MapPin,
   Calendar,
   Settings as SettingsIcon,
-  Notifications,
   Lock,
   Monitor,
   Download,

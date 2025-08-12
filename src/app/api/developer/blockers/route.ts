@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
       resolvedAt: null,
       assignedTo,
       assignedToRole,
-      tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(tag => tag.trim()) : []),
+      tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map((tag: string) => tag.trim()) : []),
       updates: [
         {
           id: 1,

@@ -130,6 +130,7 @@ export default function OnboardingOffboardingManagement() {
   const [activeTab, setActiveTab] = useState('onboarding')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const { addNotification } = useNotifications()
@@ -187,21 +188,36 @@ export default function OnboardingOffboardingManagement() {
 
   const handleChecklistToggle = (employeeId: string, taskId: number, isOnboarding: boolean) => {
     const employees = isOnboarding ? onboardingEmployees : offboardingEmployees
-    const setEmployees = isOnboarding ? setOnboardingEmployees : setOffboardingEmployees
-    
-    const updatedEmployees = employees.map(emp => {
-      if (emp.id === employeeId) {
-        const updatedChecklist = emp.checklist.map(task => 
-          task.id === taskId ? { ...task, completed: !task.completed } : task
-        )
-        const progress = (updatedChecklist.filter(t => t.completed).length / updatedChecklist.length) * 100
-        return { ...emp, checklist: updatedChecklist, progress: Math.round(progress) }
-      }
-      return emp
+    if (isOnboarding) {
+      const updatedEmployees = onboardingEmployees.map(emp => {
+        if (emp.id === employeeId) {
+          const updatedChecklist = emp.checklist.map(task => 
+            task.id === taskId ? { ...task, completed: !task.completed } : task
+          )
+          const progress = (updatedChecklist.filter(t => t.completed).length / updatedChecklist.length) * 100
+          return { ...emp, checklist: updatedChecklist, progress: Math.round(progress) }
+        }
+        return emp
+      })
+      setOnboardingEmployees(updatedEmployees)
+    } else {
+      const updatedEmployees = offboardingEmployees.map(emp => {
+        if (emp.id === employeeId) {
+          const updatedChecklist = emp.checklist.map(task => 
+            task.id === taskId ? { ...task, completed: !task.completed } : task
+          )
+          const progress = (updatedChecklist.filter(t => t.completed).length / updatedChecklist.length) * 100
+          return { ...emp, checklist: updatedChecklist, progress: Math.round(progress) }
+        }
+        return emp
+      })
+      setOffboardingEmployees(updatedEmployees)
+    }
+    addNotification({
+      type: 'success',
+      title: 'Checklist Updated',
+      message: 'Task status has been updated'
     })
-    
-    setEmployees(updatedEmployees)
-    addNotification('Checklist Updated', 'Task status has been updated', 'success')
   }
 
   const handleDocumentVerification = (documentId: string, status: string) => {
@@ -211,11 +227,19 @@ export default function OnboardingOffboardingManagement() {
         : doc
     )
     setDocuments(updatedDocuments)
-    addNotification('Document Verified', 'Document status has been updated', 'success')
+    addNotification({
+      type: 'success',
+      title: 'Document Verified',
+      message: 'Document status has been updated'
+    })
   }
 
   const handleNotifyIT = (employeeId: string, type: 'onboarding' | 'offboarding') => {
-    addNotification('IT Notification Sent', `IT team notified about ${type} for employee ${employeeId}`, 'success')
+    addNotification({
+      type: 'success',
+      title: 'IT Notification Sent',
+      message: `IT team notified about ${type} for employee ${employeeId}`
+    })
   }
 
   const clearFilters = () => {
@@ -224,7 +248,7 @@ export default function OnboardingOffboardingManagement() {
     setSelectedStatus('')
   }
 
-  const departments = [...new Set([...onboardingEmployees, ...offboardingEmployees].map(emp => emp.department))]
+  const departments = Array.from(new Set([...onboardingEmployees, ...offboardingEmployees].map(emp => emp.department)))
 
   return (
     <div className="min-h-screen bg-gray-50">

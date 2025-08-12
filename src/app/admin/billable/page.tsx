@@ -243,16 +243,14 @@ export default function BillableHoursPage() {
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-2">
                 <Label htmlFor="ruleType">Rule Type</Label>
-                <Select value={newRule.type} onValueChange={(value) => setNewRule(prev => ({ ...prev, type: value }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="role">Role-based</SelectItem>
-                    <SelectItem value="project_type">Project Type</SelectItem>
-                    <SelectItem value="time_of_day">Time of Day</SelectItem>
-                    <SelectItem value="day_of_week">Day of Week</SelectItem>
-                  </SelectContent>
+                <Select 
+                  value={newRule.type} 
+                  onChange={(e) => setNewRule(prev => ({ ...prev, type: e.target.value }))}
+                >
+                  <option value="role">Role-based</option>
+                  <option value="project_type">Project Type</option>
+                  <option value="time_of_day">Time of Day</option>
+                  <option value="day_of_week">Day of Week</option>
                 </Select>
               </div>
               
@@ -292,7 +290,7 @@ export default function BillableHoursPage() {
                 <Switch
                   id="isBillable"
                   checked={newRule.isBillable}
-                  onCheckedChange={(checked) => setNewRule(prev => ({ ...prev, isBillable: checked }))}
+                  onChange={(e) => setNewRule(prev => ({ ...prev, isBillable: e.target.checked }))}
                 />
                 <Label htmlFor="isBillable">Billable</Label>
               </div>
@@ -329,7 +327,7 @@ export default function BillableHoursPage() {
                     </p>
                   </div>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => removeRule(rule.id!)}
                   >
@@ -352,16 +350,15 @@ export default function BillableHoursPage() {
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-2">
               <Label htmlFor="rateRole">Role</Label>
-              <Select value={newRate.roleId} onValueChange={(value) => setNewRate(prev => ({ ...prev, roleId: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="developer">Developer</SelectItem>
-                  <SelectItem value="designer">Designer</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="analyst">Analyst</SelectItem>
-                </SelectContent>
+              <Select 
+                value={newRate.roleId} 
+                onChange={(e) => setNewRate(prev => ({ ...prev, roleId: e.target.value }))}
+              >
+                <option value="">Select role</option>
+                <option value="developer">Developer</option>
+                <option value="designer">Designer</option>
+                <option value="manager">Manager</option>
+                <option value="analyst">Analyst</option>
               </Select>
             </div>
             
@@ -415,7 +412,7 @@ export default function BillableHoursPage() {
                     </p>
                   </div>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => removeRate(rate.id!)}
                   >

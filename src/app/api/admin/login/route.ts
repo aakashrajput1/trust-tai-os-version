@@ -14,8 +14,15 @@ if (!supabaseServiceKey && !supabaseAnonKey) {
   throw new Error('Either SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
 }
 
-// Use service role key if available, otherwise fall back to anon key
-const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey!)
+// Create Supabase client with Edge Runtime compatible configuration
+const createSupabaseClient = () => {
+  return createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
 
 // Simple in-memory rate limiting (in production, use Redis or similar)
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>()
@@ -56,9 +63,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check admin credentials directly from admin table
+    const supabase = createSupabaseClient()
     const { data: adminData, error: adminError } = await supabase
       .from('admin')
-      .select('id, name, email, password_hash, role, status, permissions')
+      .select('id, name, email, password_hash, role, status, permissions, login_count')
       .eq('email', email)
       .eq('status', 'active')
       .single()
@@ -159,6 +167,7 @@ async function logAdminLoginAttempt(
   details: string
 ) {
   try {
+    const supabase = createSupabaseClient()
     await supabase
       .from('admin_audit_logs')
       .insert({

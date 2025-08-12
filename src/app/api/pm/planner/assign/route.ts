@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       assignments: savedAssignments,
       summary: {
         totalAssignments: savedAssignments.length,
-        affectedMembers: [...new Set(assignments.map((a: any) => a.memberId))].length,
+        affectedMembers: Array.from(new Set(assignments.map((a: any) => a.memberId))).length,
         weekStart
       }
     }, { status: 201 })

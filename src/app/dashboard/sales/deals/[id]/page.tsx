@@ -117,7 +117,7 @@ const getActivityIcon = (type: string) => {
 export default function DealDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { addNotification } = useNotification()
+  const { addNotification } = useNotifications()
   const [deal, setDeal] = useState(mockDealDetails)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showStageModal, setShowStageModal] = useState(false)
@@ -152,23 +152,39 @@ export default function DealDetailPage() {
 
   const handleStageChange = (newStage: string) => {
     setDeal({ ...deal, stage: newStage })
-    addNotification('Stage Updated', `Deal moved to ${getStageLabel(newStage)}`, 'success')
+    addNotification({
+      type: 'success',
+      title: 'Stage Updated',
+      message: `Deal moved to ${getStageLabel(newStage)}`
+    })
     setShowStageModal(false)
   }
 
   const handleExportDeal = (format: string) => {
-    addNotification('Export', `Exporting deal as ${format.toUpperCase()}...`, 'info')
+    addNotification({
+      type: 'info',
+      title: 'Export',
+      message: `Exporting deal as ${format.toUpperCase()}...`
+    })
     // Here you would typically trigger the actual export
   }
 
   const handleShareDeal = () => {
-    addNotification('Share', 'Opening share options...', 'info')
+    addNotification({
+      type: 'info',
+      title: 'Share',
+      message: 'Opening share options...'
+    })
     // Here you would typically open a modal to share the deal
   }
 
   const handleDeleteDeal = () => {
     if (confirm('Are you sure you want to delete this deal? This action cannot be undone.')) {
-      addNotification('Deal Deleted', 'Deal has been deleted', 'success')
+      addNotification({
+        type: 'success',
+        title: 'Deal Deleted',
+        message: 'Deal has been deleted'
+      })
       router.push('/dashboard/sales/deals')
     }
   }

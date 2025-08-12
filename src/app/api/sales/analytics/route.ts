@@ -183,13 +183,16 @@ export async function GET(request: NextRequest) {
     }, {} as Record<string, { revenue: number; deals: number }>)
 
     const topPerformers = Object.entries(repPerformance)
-      .map(([repId, stats]) => ({
-        repId,
-        revenue: stats.revenue,
-        deals: stats.deals,
-        conversion: leads.filter(lead => lead.assigned_to === repId).length > 0 ? 
-          (stats.deals / leads.filter(lead => lead.assigned_to === repId).length) * 100 : 0
-      }))
+      .map(([repId, stats]) => {
+        const typedStats = stats as { revenue: number; deals: number }
+        return {
+          repId,
+          revenue: typedStats.revenue,
+          deals: typedStats.deals,
+          conversion: leads.filter(lead => lead.assigned_to === repId).length > 0 ? 
+            (typedStats.deals / leads.filter(lead => lead.assigned_to === repId).length) * 100 : 0
+        }
+      })
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5)
 
@@ -210,10 +213,13 @@ export async function GET(request: NextRequest) {
     }, {} as Record<string, { revenue: number; deals: number; lastDeal: string }>)
 
     const topClients = Object.entries(clientAnalysis)
-      .map(([clientName, stats]) => ({
-        clientName,
-        ...stats
-      }))
+      .map(([clientName, stats]) => {
+        const typedStats = stats as { revenue: number; deals: number; lastDeal: string }
+        return {
+          clientName,
+          ...typedStats
+        }
+      })
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10)
 

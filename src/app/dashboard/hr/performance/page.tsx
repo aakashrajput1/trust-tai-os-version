@@ -213,15 +213,27 @@ export default function PerformanceReviewCenter() {
   }
 
   const handleStartReview = (employeeId: string) => {
-    addNotification('Review Started', `Starting performance review for employee ${employeeId}`, 'info')
+    addNotification({
+      type: 'info',
+      title: 'Review Started',
+      message: `Starting performance review for employee ${employeeId}`
+    })
   }
 
   const handleViewHistory = (employeeId: string) => {
-    addNotification('View History', `Viewing review history for employee ${employeeId}`, 'info')
+    addNotification({
+      type: 'info',
+      title: 'View History',
+      message: `Viewing review history for employee ${employeeId}`
+    })
   }
 
   const handleExportReports = () => {
-    addNotification('Export Started', 'Generating performance review reports...', 'info')
+    addNotification({
+      type: 'info',
+      title: 'Export Started',
+      message: 'Generating performance review reports...'
+    })
     // In real implementation, this would generate and download CSV/PDF
   }
 
@@ -229,8 +241,8 @@ export default function PerformanceReviewCenter() {
     setCurrentPage(page)
   }
 
-  const departments = [...new Set(employees.map(emp => emp.department))]
-  const statuses = [...new Set(employees.map(emp => emp.status))]
+  const departments = Array.from(new Set(employees.map(emp => emp.department)))
+  const statuses = Array.from(new Set(employees.map(emp => emp.status)))
 
   const indexOfLastEmployee = currentPage * employeesPerPage
   const indexOfFirstEmployee = indexOfLastEmployee - employeesPerPage

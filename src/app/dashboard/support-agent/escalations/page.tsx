@@ -399,10 +399,10 @@ export default function Escalations() {
                   <div>
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="text-sm font-medium text-gray-900">{escalation.ticketId}</span>
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${urgencyColors[escalation.urgency]}`}>
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${urgencyColors[escalation.urgency as keyof typeof urgencyColors]}`}>
                         {getUrgencyText(escalation.urgency)}
                       </span>
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${statusColors[escalation.status]}`}>
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${statusColors[escalation.status as keyof typeof statusColors]}`}>
                         {getStatusText(escalation.status)}
                       </span>
                     </div>

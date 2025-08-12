@@ -223,7 +223,7 @@ export async function GET(request: NextRequest) {
     
     if (teamFilter && teamFilter !== 'all') {
       // Filter metrics by specific team
-      const teamData = mockMetrics.breakdown.byTeam[teamFilter]
+      const teamData = mockMetrics.breakdown.byTeam[teamFilter as keyof typeof mockMetrics.breakdown.byTeam]
       if (teamData) {
         filteredMetrics = {
           ...mockMetrics,
@@ -235,7 +235,7 @@ export async function GET(request: NextRequest) {
           },
           breakdown: {
             ...mockMetrics.breakdown,
-            byTeam: { [teamFilter]: teamData }
+            byTeam: { [teamFilter]: teamData } as typeof mockMetrics.breakdown.byTeam
           }
         }
       }

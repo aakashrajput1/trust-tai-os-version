@@ -150,7 +150,7 @@ export default function QuotesPage() {
   const [sortBy, setSortBy] = useState('createdAt')
   const [sortOrder, setSortOrder] = useState('desc')
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [selectedQuote, setSelectedQuote] = useState(null)
+  const [selectedQuote, setSelectedQuote] = useState<any>(null)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -204,12 +204,12 @@ export default function QuotesPage() {
   })
 
   const sortedQuotes = [...filteredQuotes].sort((a, b) => {
-    let aValue = a[sortBy]
-    let bValue = b[sortBy]
+    let aValue = a[sortBy as keyof typeof a]
+    let bValue = b[sortBy as keyof typeof b]
     
     if (sortBy === 'createdAt' || sortBy === 'lastModified' || sortBy === 'validUntil') {
-      aValue = new Date(aValue).getTime()
-      bValue = new Date(bValue).getTime()
+      aValue = new Date(aValue as string).getTime()
+      bValue = new Date(bValue as string).getTime()
     }
     
     if (sortOrder === 'asc') {
@@ -395,13 +395,13 @@ export default function QuotesPage() {
                       <div className="text-sm font-semibold text-gray-900">{formatCurrency(quote.value)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[quote.status]}`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[quote.status as keyof typeof statusColors]}`}>
                         {getStatusIcon(quote.status)}
                         <span className="ml-1 capitalize">{quote.status}</span>
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${approvalColors[quote.approvalStatus]}`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${approvalColors[quote.approvalStatus as keyof typeof approvalColors]}`}>
                         {getApprovalIcon(quote.approvalStatus)}
                         <span className="ml-1 capitalize">{quote.approvalStatus}</span>
                       </span>

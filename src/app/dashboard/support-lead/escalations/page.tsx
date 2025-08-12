@@ -212,7 +212,7 @@ export default function EscalationsPage() {
               message: comment,
               timestamp: new Date().toISOString()
             }]
-          }
+          } as any
         : esc
     ))
 
@@ -251,7 +251,7 @@ export default function EscalationsPage() {
               message: comment,
               timestamp: new Date().toISOString()
             }]
-          }
+          } as any
         : esc
     ))
 

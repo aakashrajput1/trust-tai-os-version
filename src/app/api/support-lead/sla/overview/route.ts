@@ -264,7 +264,7 @@ export async function GET(request: NextRequest) {
     let filteredData = mockSlaData
 
     if (team && team !== 'all') {
-      const teamData = mockSlaData.byTeam[team]
+      const teamData = mockSlaData.byTeam[team as keyof typeof mockSlaData.byTeam]
       if (teamData) {
         filteredData = {
           ...mockSlaData,
@@ -275,17 +275,17 @@ export async function GET(request: NextRequest) {
             overallCompliance: teamData.compliance,
             averageResolutionTime: teamData.avgResolutionTime
           },
-          byTeam: { [team]: teamData }
+          byTeam: { [team]: teamData } as typeof mockSlaData.byTeam
         }
       }
     }
 
     if (client && client !== 'all') {
-      const clientData = mockSlaData.byClient[client]
+      const clientData = mockSlaData.byClient[client as keyof typeof mockSlaData.byClient]
       if (clientData) {
         filteredData = {
           ...filteredData,
-          byClient: { [client]: clientData }
+          byClient: { [client]: clientData } as typeof mockSlaData.byClient
         }
       }
     }
@@ -295,7 +295,7 @@ export async function GET(request: NextRequest) {
       if (priorityData) {
         filteredData = {
           ...filteredData,
-          byPriority: { [priority]: priorityData }
+          byPriority: { [priority]: priorityData } as typeof mockSlaData.byPriority
         }
       }
     }

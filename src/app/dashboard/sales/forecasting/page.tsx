@@ -116,7 +116,11 @@ export default function RevenueForecastingPage() {
   }
 
   const handleExport = (format: string) => {
-    addNotification('Export', `Exporting forecast data as ${format.toUpperCase()}...`, 'info')
+    addNotification({
+      type: 'info',
+      title: 'Export',
+      message: `Exporting forecast data as ${format.toUpperCase()}...`
+    })
     // Here you would typically trigger the actual export
   }
 
@@ -352,7 +356,7 @@ export default function RevenueForecastingPage() {
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-4">
                     <div className="w-24 text-sm font-medium text-gray-900">
-                      {selectedPeriod === 'monthly' ? item.month : item.quarter}
+                      {'month' in item ? item.month : item.quarter}
                     </div>
                     <div className="text-sm text-gray-600">
                       Actual: {formatCurrency(item.actual)}

@@ -134,28 +134,48 @@ export default function LeadDetailPage() {
 
   const handleStatusChange = (newStatus: string) => {
     setLead({ ...lead, status: newStatus })
-    addNotification('Status Updated', `Lead status changed to ${getStatusLabel(newStatus)}`, 'success')
+    addNotification({
+      type: 'success',
+      title: 'Status Updated',
+      message: `Lead status changed to ${getStatusLabel(newStatus)}`
+    })
   }
 
   const handleConvertToDeal = () => {
-    addNotification('Convert Lead', 'Redirecting to deal creation...', 'info')
+    addNotification({
+      type: 'info',
+      title: 'Convert Lead',
+      message: 'Redirecting to deal creation...'
+    })
     // Here you would typically navigate to deal creation with lead data
     setShowConvertModal(false)
   }
 
   const handleAssignLead = () => {
-    addNotification('Assign Lead', 'Opening assignment modal...', 'info')
+    addNotification({
+      type: 'info',
+      title: 'Assign Lead',
+      message: 'Opening assignment modal...'
+    })
     // Here you would typically open a modal to select sales rep
   }
 
   const handleMarkAsLost = () => {
     setLead({ ...lead, status: 'unqualified' })
-    addNotification('Lead Status', 'Lead marked as unqualified', 'warning')
+    addNotification({
+      type: 'warning',
+      title: 'Lead Status',
+      message: 'Lead marked as unqualified'
+    })
   }
 
   const handleDeleteLead = () => {
     if (confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
-      addNotification('Lead Deleted', 'Lead has been deleted', 'success')
+      addNotification({
+        type: 'success',
+        title: 'Lead Deleted',
+        message: 'Lead has been deleted'
+      })
       router.push('/dashboard/sales/leads')
     }
   }
