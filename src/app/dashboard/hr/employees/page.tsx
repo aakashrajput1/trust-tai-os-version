@@ -19,6 +19,7 @@ import {
   Award,
   MoreHorizontal
 } from 'lucide-react'
+import { useRoles } from '@/hooks/useRoles'
 
 // Mock data for employees
 const mockEmployees = [
@@ -109,7 +110,6 @@ const mockEmployees = [
 ]
 
 const departments = ['All Departments', 'Engineering', 'Marketing', 'Sales', 'HR', 'Finance']
-const roles = ['All Roles', 'Software Engineer', 'Engineering Manager', 'VP Engineering', 'Marketing Manager', 'VP Marketing', 'Sales Representative']
 const statuses = ['All Statuses', 'active', 'inactive']
 
 export default function EmployeeDirectory() {
@@ -117,6 +117,10 @@ export default function EmployeeDirectory() {
   const [filteredEmployees, setFilteredEmployees] = useState(mockEmployees)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments')
+  const { roles, loading: rolesLoading } = useRoles()
+  
+  // Get role names for filter
+  const roleOptions = ['All Roles', ...roles.map(role => role.display_name)]
   const [selectedRole, setSelectedRole] = useState('All Roles')
   const [selectedStatus, setSelectedStatus] = useState('All Statuses')
   const [showFilters, setShowFilters] = useState(false)
@@ -285,7 +289,7 @@ export default function EmployeeDirectory() {
                   onChange={(e) => setSelectedRole(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
                 >
-                  {roles.map(role => (
+                  {roleOptions.map(role => (
                     <option key={role} value={role}>{role}</option>
                   ))}
                 </select>

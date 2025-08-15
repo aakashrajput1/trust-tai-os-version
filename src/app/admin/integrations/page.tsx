@@ -2,235 +2,184 @@
 
 import { useState, useEffect } from 'react'
 import { 
-  Settings, 
+  Globe, 
   Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  Download,
-  CheckCircle,
-  X,
-  AlertTriangle,
+  Search, 
+  Download, 
   RefreshCw,
-  Link,
-  Unlink,
-  Activity,
-  Shield,
-  Database,
-  MessageSquare,
-  Calendar,
-  CreditCard
+  CheckCircle,
+  AlertTriangle,
+  X,
+  TestTube,
+  Trash2,
+  Edit,
+  Eye
 } from 'lucide-react'
+import { Integration, IntegrationStatus, IntegrationType } from '@/types/admin'
 
-interface Integration {
-  id: string
-  name: string
-  type: string
-  status: 'active' | 'inactive' | 'error' | 'pending'
-  lastSync: string
-  nextSync: string
-  apiCalls: number
-  errorCount: number
-  isConnected: boolean
-  description: string
-  icon: string
-}
-
-interface IntegrationMetrics {
-  totalIntegrations: number
-  activeIntegrations: number
-  errorIntegrations: number
-  totalApiCalls: number
-  syncSuccessRate: number
-}
-
-export default function Integrations() {
+export default function IntegrationsManagement() {
   const [integrations, setIntegrations] = useState<Integration[]>([])
-  const [metrics, setMetrics] = useState<IntegrationMetrics>({
-    totalIntegrations: 0,
-    activeIntegrations: 0,
-    errorIntegrations: 0,
-    totalApiCalls: 0,
-    syncSuccessRate: 0
-  })
   const [loading, setLoading] = useState(true)
-  const [showCreateIntegration, setShowCreateIntegration] = useState(false)
-  const [showSandboxModal, setShowSandboxModal] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showAddIntegration, setShowAddIntegration] = useState(false)
+  const [showEditIntegration, setShowEditIntegration] = useState(false)
+  const [showViewIntegration, setShowViewIntegration] = useState(false)
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null)
-  const [sandboxMode, setSandboxMode] = useState<{[key: string]: boolean}>({})
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      const mockIntegrations: Integration[] = [
-        {
-          id: '1',
-          name: 'Slack',
-          type: 'communication',
-          status: 'active',
-          lastSync: '2 minutes ago',
-          nextSync: 'in 3 minutes',
-          apiCalls: 1247,
-          errorCount: 0,
-          isConnected: true,
-          description: 'Team communication and notifications',
-          icon: 'slack'
-        },
-        {
-          id: '2',
-          name: 'GitHub',
-          type: 'development',
-          status: 'active',
-          lastSync: '5 minutes ago',
-          nextSync: 'in 10 minutes',
-          apiCalls: 892,
-          errorCount: 2,
-          isConnected: true,
-          description: 'Code repository and version control',
-          icon: 'github'
-        },
-        {
-          id: '3',
-          name: 'Jira',
-          type: 'project_management',
-          status: 'active',
-          lastSync: '1 minute ago',
-          nextSync: 'in 4 minutes',
-          apiCalls: 1567,
-          errorCount: 0,
-          isConnected: true,
-          description: 'Project tracking and issue management',
-          icon: 'jira'
-        },
-        {
-          id: '4',
-          name: 'Stripe',
-          type: 'payment',
-          status: 'error',
-          lastSync: '1 hour ago',
-          nextSync: 'retry in 30 minutes',
-          apiCalls: 234,
-          errorCount: 15,
-          isConnected: false,
-          description: 'Payment processing and billing',
-          icon: 'stripe'
-        },
-        {
-          id: '5',
-          name: 'Google Calendar',
-          type: 'calendar',
-          status: 'inactive',
-          lastSync: '3 days ago',
-          nextSync: 'not scheduled',
-          apiCalls: 89,
-          errorCount: 0,
-          isConnected: false,
-          description: 'Calendar integration and scheduling',
-          icon: 'calendar'
-        },
-        {
-          id: '6',
-          name: 'HubSpot',
-          type: 'crm',
-          status: 'pending',
-          lastSync: 'never',
-          nextSync: 'pending setup',
-          apiCalls: 0,
-          errorCount: 0,
-          isConnected: false,
-          description: 'Customer relationship management',
-          icon: 'hubspot'
-        }
-      ]
-
-      const mockMetrics: IntegrationMetrics = {
-        totalIntegrations: 6,
-        activeIntegrations: 3,
-        errorIntegrations: 1,
-        totalApiCalls: 4029,
-        syncSuccessRate: 95.2
-      }
-
-      setIntegrations(mockIntegrations)
-      setMetrics(mockMetrics)
-      setLoading(false)
-    }, 1000)
+    loadIntegrations()
   }, [])
 
-  const getStatusColor = (status: string) => {
+  const loadIntegrations = async () => {
+    try {
+      setLoading(true)
+      // Load mock data for development
+      setIntegrations(getMockIntegrations())
+    } catch (error) {
+      console.error('Error loading integrations:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    try {
+      setExporting(true)
+      if (format === 'csv') {
+        const dataStr = integrations.map(integration => ({
+          Name: integration.name,
+          Type: integration.type,
+          Status: integration.status,
+          Provider: integration.provider,
+          'Last Sync': integration.lastSync,
+          'Error Count': integration.errorCount,
+          'Is Active': integration.isActive ? 'Yes' : 'No'
+        })).map(row => Object.values(row).join(',')).join('\n')
+        
+        const blob = new Blob([dataStr], { type: 'text/csv' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `integrations-${new Date().toISOString().split('T')[0]}.csv`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      } else {
+        const dataStr = JSON.stringify(integrations, null, 2)
+        const blob = new Blob([dataStr], { type: 'application/json' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `integrations-${new Date().toISOString().split('T')[0]}.json`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      }
+    } catch (error) {
+      console.error('Error exporting integrations:', error)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const getMockIntegrations = (): Integration[] => [
+    {
+      id: '1',
+      name: 'Stripe Payment Gateway',
+      type: 'api_key',
+      provider: 'Stripe',
+      status: 'active',
+      config: {
+        apiKey: 'sk_test_...',
+        baseUrl: 'https://api.stripe.com',
+        customHeaders: {
+          'Stripe-Version': '2023-10-26'
+        }
+      },
+      lastSync: '2024-01-15T10:30:00Z',
+      syncInterval: 60,
+      errorCount: 2,
+      isActive: true,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-15T10:30:00Z',
+      metadata: {
+        category: 'Payments',
+        supportedCurrencies: ['USD', 'EUR', 'GBP']
+      }
+    },
+    {
+      id: '2',
+      name: 'SendGrid Email Service',
+      type: 'api_key',
+      provider: 'SendGrid',
+      status: 'active',
+      config: {
+        apiKey: 'SG...',
+        baseUrl: 'https://api.sendgrid.com',
+        customHeaders: {
+          'Content-Type': 'application/json'
+        }
+      },
+      lastSync: '2024-01-15T09:15:00Z',
+      syncInterval: 30,
+      errorCount: 1,
+      isActive: true,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-15T09:15:00Z',
+      metadata: {
+        category: 'Communication',
+        defaultFromEmail: 'noreply@example.com'
+      }
+    },
+    {
+      id: '3',
+      name: 'Slack Notifications',
+      type: 'webhook',
+      provider: 'Slack',
+      status: 'error',
+      config: {
+        webhookUrl: 'https://hooks.slack.com/services/...',
+        customHeaders: {
+          'Content-Type': 'application/json'
+        }
+      },
+      lastSync: '2024-01-15T08:45:00Z',
+      syncInterval: 15,
+      errorCount: 15,
+      lastError: 'Webhook URL expired',
+      isActive: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-15T08:45:00Z',
+      metadata: {
+        category: 'Communication',
+        defaultChannel: '#alerts'
+      }
+    }
+  ]
+
+  const getStatusColor = (status: IntegrationStatus) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'inactive': return 'bg-gray-100 text-gray-800'
-      case 'error': return 'bg-red-100 text-red-800'
-      case 'pending': return 'bg-yellow-100 text-yellow-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'active': return 'text-green-600 bg-green-100'
+      case 'inactive': return 'text-gray-600 bg-gray-100'
+      case 'error': return 'text-red-600 bg-red-100'
+      case 'syncing': return 'text-yellow-600 bg-yellow-100'
+      case 'disconnected': return 'text-gray-600 bg-gray-100'
+      default: return 'text-gray-600 bg-gray-100'
     }
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: IntegrationStatus) => {
     switch (status) {
-      case 'active': return <CheckCircle className="h-4 w-4 text-green-600" />
-      case 'inactive': return <X className="h-4 w-4 text-gray-600" />
-      case 'error': return <AlertTriangle className="h-4 w-4 text-red-600" />
-      case 'pending': return <RefreshCw className="h-4 w-4 text-yellow-600" />
-      default: return <X className="h-4 w-4 text-gray-600" />
+      case 'active': return <CheckCircle className="h-5 w-5 text-green-600" />
+      case 'inactive': return <X className="h-5 w-5 text-gray-600" />
+      case 'error': return <AlertTriangle className="h-5 w-5 text-red-600" />
+      case 'syncing': return <TestTube className="h-5 w-5 text-yellow-600" />
+      case 'disconnected': return <X className="h-5 w-5 text-gray-600" />
+      default: return <TestTube className="h-5 w-5 text-gray-600" />
     }
   }
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'communication': return <MessageSquare className="h-5 w-5" />
-      case 'development': return <Database className="h-5 w-5" />
-      case 'project_management': return <Activity className="h-5 w-5" />
-      case 'payment': return <CreditCard className="h-5 w-5" />
-      case 'calendar': return <Calendar className="h-5 w-5" />
-      case 'crm': return <Shield className="h-5 w-5" />
-      default: return <Settings className="h-5 w-5" />
-    }
-  }
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'communication': return 'bg-blue-100 text-blue-800'
-      case 'development': return 'bg-purple-100 text-purple-800'
-      case 'project_management': return 'bg-green-100 text-green-800'
-      case 'payment': return 'bg-emerald-100 text-emerald-800'
-      case 'calendar': return 'bg-orange-100 text-orange-800'
-      case 'crm': return 'bg-indigo-100 text-indigo-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const toggleConnection = async (integrationId: string) => {
-    setIntegrations(prev => prev.map(integration => 
-      integration.id === integrationId 
-        ? { ...integration, isConnected: !integration.isConnected }
-        : integration
-    ))
-  }
-
-  const refreshIntegration = async (integrationId: string) => {
-    // Simulate refresh
-    setIntegrations(prev => prev.map(integration => 
-      integration.id === integrationId 
-        ? { ...integration, lastSync: 'just now', nextSync: 'in 5 minutes' }
-        : integration
-    ))
-  }
-
-  const exportIntegrationsReport = () => {
-    // Simulate CSV export
-    const csvContent = integrations.map(integration => 
-      `${integration.name},${integration.type},${integration.status},${integration.lastSync},${integration.apiCalls},${integration.errorCount}`
-    ).join('\n')
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'integrations-report.csv'
-    a.click()
-    window.URL.revokeObjectURL(url)
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString()
   }
 
   if (loading) {
@@ -247,226 +196,327 @@ export default function Integrations() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Integrations</h1>
-          <p className="mt-2 text-gray-600">
-            Manage external service connections and API integrations
-          </p>
+      <div className="border-b border-gray-200 pb-4">
+        <h1 className="text-3xl font-bold text-gray-900">Integration Management</h1>
+        <p className="mt-2 text-gray-600">
+          Manage third-party integrations, APIs, and external service connections
+        </p>
+      </div>
+
+      {/* Actions Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        <div className="flex flex-col sm:flex-row gap-3 flex-1">
+          {/* Search */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search integrations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
         </div>
-        <div className="flex items-center space-x-3">
+
+        <div className="flex gap-3">
+          {/* Refresh */}
           <button
-            onClick={exportIntegrationsReport}
-            className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={loadIntegrations}
+            className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <Download className="h-4 w-4" />
-            <span>Export Report</span>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
           </button>
-          <button 
-            onClick={() => setShowCreateIntegration(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+
+          {/* Export */}
+          <button
+            onClick={() => handleExport('csv')}
+            disabled={exporting}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            <Plus className="h-4 w-4" />
-            <span>Add Integration</span>
+            <Download className="h-4 w-4 mr-2" />
+            {exporting ? 'Exporting...' : 'Export CSV'}
+          </button>
+
+          {/* Add Integration */}
+          <button
+            onClick={() => setShowAddIntegration(true)}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Integration
           </button>
         </div>
       </div>
 
-      {/* Integration Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Integrations</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.totalIntegrations}</p>
+      {/* Integrations Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {integrations.map((integration) => (
+          <div
+            key={integration.id}
+            className="bg-white rounded-lg shadow border border-gray-200 p-6 hover:shadow-lg transition-shadow"
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center">
+                <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                  <Globe className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{integration.name}</h3>
+                  <p className="text-sm text-gray-500 capitalize">{integration.type}</p>
+                </div>
+              </div>
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(integration.status)}`}>
+                {getStatusIcon(integration.status)}
+                <span className="ml-1 capitalize">{integration.status}</span>
+              </span>
             </div>
-            <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Settings className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Active</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.activeIntegrations}</p>
-            </div>
-            <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
+            {/* Provider */}
+            <p className="text-sm text-gray-600 mb-4">Provider: {integration.provider}</p>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Errors</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.errorIntegrations}</p>
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900">{integration.errorCount}</div>
+                <div className="text-xs text-gray-500">Errors</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900">{integration.syncInterval}m</div>
+                <div className="text-xs text-gray-500">Sync Interval</div>
+              </div>
             </div>
-            <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">API Calls</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.totalApiCalls.toLocaleString()}</p>
+            {/* Last Sync */}
+            <div className="text-xs text-gray-500 mb-4">
+              Last sync: {formatTimestamp(integration.lastSync)}
             </div>
-            <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Activity className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Success Rate</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.syncSuccessRate}%</p>
-            </div>
-            <div className="h-12 w-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="h-6 w-6 text-emerald-600" />
+            {/* Actions */}
+            <div className="flex items-center justify-between">
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => {
+                    setSelectedIntegration(integration)
+                    setShowViewIntegration(true)
+                  }}
+                  className="flex items-center px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  View
+                </button>
+              </div>
+              
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => {
+                    setSelectedIntegration(integration)
+                    setShowEditIntegration(true)
+                  }}
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                  title="Edit Integration"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to delete ${integration.name}?`)) {
+                      setIntegrations(prev => prev.filter(i => i.id !== integration.id))
+                    }
+                  }}
+                  className="p-1 text-gray-400 hover:text-red-600"
+                  title="Delete Integration"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        ))}
       </div>
 
-      {/* Integrations List */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Connected Services ({integrations.length})
-          </h2>
-          <p className="text-sm text-gray-600">
-            Monitor and manage your external integrations
+      {/* Empty State */}
+      {integrations.length === 0 && (
+        <div className="text-center py-12">
+          <Globe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No integrations found</h3>
+          <p className="text-gray-500 mb-4">
+            {searchTerm ? 'Try adjusting your search terms.' : 'Get started by adding your first integration.'}
           </p>
+          {!searchTerm && (
+            <button
+              onClick={() => setShowAddIntegration(true)}
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Integration
+            </button>
+          )}
         </div>
-        
-        <div className="divide-y divide-gray-200">
-          {integrations.map((integration) => (
-            <div key={integration.id} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                    {getTypeIcon(integration.type)}
+      )}
+
+      {/* Add Integration Modal */}
+      {showAddIntegration && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Add New Integration</h2>
+              <button
+                onClick={() => setShowAddIntegration(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <form className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Integration Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter integration name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Integration Type *
+                  </label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Select type</option>
+                    <option value="oauth">OAuth</option>
+                    <option value="api_key">API Key</option>
+                    <option value="webhook">Webhook</option>
+                    <option value="sso">SSO</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Provider
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter provider name"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddIntegration(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Add Integration
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Integration Modal */}
+      {showViewIntegration && selectedIntegration && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Integration Details: {selectedIntegration.name}</h2>
+              <button
+                onClick={() => setShowViewIntegration(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Basic Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">Name</label>
+                    <p className="text-sm text-gray-900">{selectedIntegration.name}</p>
                   </div>
                   <div>
-                    <div className="flex items-center space-x-3">
-                      <h3 className="text-lg font-medium text-gray-900">{integration.name}</h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(integration.status)}`}>
-                        {integration.status.charAt(0).toUpperCase() + integration.status.slice(1)}
-                      </span>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(integration.type)}`}>
-                        {integration.type.replace('_', ' ').charAt(0).toUpperCase() + integration.type.replace('_', ' ').slice(1)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">{integration.description}</p>
-                    <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                      <span>Last sync: {integration.lastSync}</span>
-                      <span>•</span>
-                      <span>Next sync: {integration.nextSync}</span>
-                      <span>•</span>
-                      <span>API calls: {integration.apiCalls.toLocaleString()}</span>
-                      {integration.errorCount > 0 && (
-                        <>
-                          <span>•</span>
-                          <span className="text-red-600">Errors: {integration.errorCount}</span>
-                        </>
-                      )}
-                    </div>
+                    <label className="block text-sm font-medium text-gray-500">Type</label>
+                    <p className="text-sm text-gray-900 capitalize">{selectedIntegration.type}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">Provider</label>
+                    <p className="text-sm text-gray-900">{selectedIntegration.provider}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">Status</label>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedIntegration.status)}`}>
+                      {getStatusIcon(selectedIntegration.status)}
+                      <span className="ml-1 capitalize">{selectedIntegration.status}</span>
+                    </span>
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => refreshIntegration(integration.id)}
-                    className="text-blue-600 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Refresh integration"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </button>
-                  
-                  <button
-                    onClick={() => toggleConnection(integration.id)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      integration.isConnected
-                        ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
-                        : 'text-green-600 hover:text-green-700 hover:bg-green-50'
-                    }`}
-                    title={integration.isConnected ? 'Disconnect' : 'Connect'}
-                  >
-                    {integration.isConnected ? <Unlink className="h-4 w-4" /> : <Link className="h-4 w-4" />}
-                  </button>
-                  
-                  <button className="text-gray-600 hover:text-gray-700 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  
-                  <button className="text-gray-600 hover:text-gray-700 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                    <Eye className="h-4 w-4" />
-                  </button>
-                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Integration Health */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Integration Health</h2>
-          <p className="text-sm text-gray-600">Real-time status and performance monitoring</p>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h3 className="text-md font-medium text-gray-900">Recent Activity</h3>
-              <div className="space-y-3">
-                {integrations.slice(0, 3).map((integration) => (
-                  <div key={integration.id} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg">
-                    {getStatusIcon(integration.status)}
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{integration.name}</p>
-                      <p className="text-xs text-gray-500">Last sync: {integration.lastSync}</p>
+              {/* Performance Metrics */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Performance Metrics</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-gray-900">{selectedIntegration.errorCount}</div>
+                    <div className="text-sm text-gray-600">Error Count</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-gray-900">{selectedIntegration.syncInterval}m</div>
+                    <div className="text-sm text-gray-600">Sync Interval</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {formatTimestamp(selectedIntegration.lastSync)}
                     </div>
+                    <div className="text-sm text-gray-600">Last Sync</div>
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
-            
-            <div className="space-y-4">
-              <h3 className="text-md font-medium text-gray-900">Quick Actions</h3>
-              <div className="space-y-3">
-                <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <RefreshCw className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-gray-900">Refresh All Integrations</span>
-                  </div>
-                </button>
-                
-                <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <Download className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium text-gray-900">Download Logs</span>
-                  </div>
-                </button>
-                
-                <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <Settings className="h-4 w-4 text-purple-600" />
-                    <span className="text-sm font-medium text-gray-900">Integration Settings</span>
-                  </div>
-                </button>
+
+              {/* Configuration */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Configuration</h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <pre className="text-sm text-gray-900 whitespace-pre-wrap">
+                    {JSON.stringify(selectedIntegration.config, null, 2)}
+                  </pre>
+                </div>
               </div>
+
+              {/* Metadata */}
+              {selectedIntegration.metadata && (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">Metadata</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <pre className="text-sm text-gray-900 whitespace-pre-wrap">
+                      {JSON.stringify(selectedIntegration.metadata, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

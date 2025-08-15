@@ -1,90 +1,108 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import { DashboardMetrics } from '@/types/admin'
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin role (you can implement proper auth middleware later)
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
+    const supabase = createServerComponentClient({ cookies })
+    
+    // Check authentication
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get system metrics
-    const { data: users, error: usersError } = await supabase
+    // Check if user has admin role
+    const { data: userProfile } = await supabase
       .from('users')
-      .select('id, last_active')
-      .eq('status', 'active')
+      .select('role')
+      .eq('id', session.user.id)
+      .single()
 
-    if (usersError) throw usersError
-
-    const activeUsers = users?.length || 0
-    const now = new Date()
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
-    const recentlyActive = users?.filter(user => 
-      user.last_active && new Date(user.last_active) > oneHourAgo
-    ).length || 0
-
-    // Get pending actions
-    const { data: pendingUsers, error: pendingUsersError } = await supabase
-      .from('users')
-      .select('id, name, email, created_at')
-      .eq('status', 'pending')
-      .limit(5)
-
-    if (pendingUsersError) throw pendingUsersError
-
-    const { data: pendingRoles, error: pendingRolesError } = await supabase
-      .from('role_change_requests')
-      .select('id, user_id, new_role, created_at')
-      .eq('status', 'pending')
-      .limit(5)
-
-    if (pendingRolesError) throw pendingRolesError
-
-    const pendingActions = [
-      ...(pendingUsers?.map(user => ({
-        id: user.id,
-        type: 'user_approval' as const,
-        title: 'New User Approval Request',
-        description: `${user.name} (${user.email}) is requesting access`,
-        priority: 'medium' as const,
-        createdAt: new Date(user.created_at).toLocaleString()
-      })) || []),
-      ...(pendingRoles?.map(role => ({
-        id: role.id,
-        type: 'role_change' as const,
-        title: 'Role Change Request',
-        description: `User wants to change to ${role.new_role}`,
-        priority: 'high' as const,
-        createdAt: new Date(role.created_at).toLocaleString()
-      })) || [])
-    ]
-
-    const metrics = {
-      activeUsers: activeUsers,
-      recentlyActiveUsers: recentlyActive,
-      apiResponseTime: Math.floor(Math.random() * 100) + 100, // Mock for now
-      dbHealth: 'healthy' as const,
-      queueBacklog: Math.floor(Math.random() * 50), // Mock for now
-      totalUsers: activeUsers + (pendingUsers?.length || 0)
+    if (!userProfile || (userProfile.role !== 'Admin' && userProfile.role !== 'Executive')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
+    // Get system metrics
+    const metrics: DashboardMetrics = await getSystemMetrics(supabase)
+
     return NextResponse.json({
-      metrics,
-      pendingActions,
-      timestamp: new Date().toISOString()
+      success: true,
+      data: metrics
     })
 
   } catch (error) {
-    console.error('Error fetching admin dashboard metrics:', error)
+    console.error('Dashboard metrics error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
+  }
+}
+
+async function getSystemMetrics(supabase: any): Promise<DashboardMetrics> {
+  try {
+    // Get user counts
+    const { count: totalUsers } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+
+    const { count: activeUsers } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active')
+
+    // Get integration counts
+    const { data: integrations } = await supabase
+      .from('integrations')
+      .select('status')
+
+    const integrationCounts = {
+      total: integrations?.length || 0,
+      active: integrations?.filter((i: { status?: string }) => i.status === 'active').length || 0,
+      error: integrations?.filter((i: { status?: string }) => i.status === 'error').length || 0
+    }
+
+    // Get goal counts
+    const { data: goals } = await supabase
+      .from('goals')
+      .select('status')
+
+    const goalCounts = {
+      total: goals?.length || 0,
+      completed: goals?.filter((g: { status?: string }) => g.status === 'completed').length || 0,
+      overdue: goals?.filter((g: { status?: string }) => g.status === 'overdue').length || 0
+    }
+
+    // Simulate system metrics (in real app, these would come from monitoring systems)
+    const metrics: DashboardMetrics = {
+      activeUsers: activeUsers || 0,
+      totalUsers: totalUsers || 0,
+      apiResponseTime: Math.floor(Math.random() * 200) + 50, // 50-250ms
+      dbHealth: 'healthy' as const,
+      queueBacklog: Math.floor(Math.random() * 50),
+      systemUptime: 99.98,
+      lastBackup: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 24 hours ago
+      integrations: integrationCounts,
+      goals: goalCounts
+    }
+
+    return metrics
+
+  } catch (error) {
+    console.error('Error getting system metrics:', error)
+    // Return default metrics on error
+    return {
+      activeUsers: 0,
+      totalUsers: 0,
+      apiResponseTime: 0,
+      dbHealth: 'unknown' as const,
+      queueBacklog: 0,
+      systemUptime: 0,
+      lastBackup: new Date().toISOString(),
+      integrations: { total: 0, active: 0, error: 0 },
+      goals: { total: 0, completed: 0, overdue: 0 }
+    }
   }
 }

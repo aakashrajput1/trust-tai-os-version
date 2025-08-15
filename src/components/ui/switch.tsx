@@ -5,10 +5,11 @@ export interface SwitchProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
   description?: string
+  onCheckedChange?: (checked: boolean) => void
 }
 
 const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
-  ({ className, label, description, ...props }, ref) => {
+  ({ className, label, description, onCheckedChange, onChange, ...props }, ref) => {
     return (
       <div className="flex items-center space-x-3">
         <div className="relative">
@@ -17,6 +18,10 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
             className="sr-only"
             ref={ref}
             {...props}
+            onChange={(e) => {
+              onChange?.(e)
+              onCheckedChange?.(e.currentTarget.checked)
+            }}
           />
           <div
             className={cn(

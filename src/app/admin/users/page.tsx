@@ -2,37 +2,37 @@
 
 import { useState, useEffect } from 'react'
 import { 
-  Users, 
+  Plus, 
   Search, 
   Filter, 
-  Plus, 
+  Download, 
+  Upload, 
   Edit, 
   Trash2, 
-  Eye, 
   MoreHorizontal,
+  User,
+  Mail,
+  Shield,
+  Building,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertCircle,
+  X,
+  UserPlus,
+  Save,
   ChevronLeft,
   ChevronRight,
-  Download,
-  UserPlus,
-  Upload,
-  FileText,
-  X
+  FileText
 } from 'lucide-react'
-
-interface User {
-  id: string
-  name: string
-  email: string
-  role: string
-  status: 'active' | 'inactive'
-  mfa_enabled?: boolean
-  lastActive: string
-  createdAt: string
-}
+import { useRoles } from '@/hooks/useRoles'
+import { User as UserType, UserRole, UserStatus } from '@/types/admin'
+import UserEditModal from '@/components/ui/UserEditModal'
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>([])
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<UserType[]>([])
+  const [filteredUsers, setFilteredUsers] = useState<UserType[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -46,72 +46,67 @@ export default function UserManagement() {
   const [importing, setImporting] = useState(false)
   const [mfaStatus, setMfaStatus] = useState<{[key: string]: boolean}>({})
   const [creatingUser, setCreatingUser] = useState(false)
+  const [editingUser, setEditingUser] = useState<UserType | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [deletingUser, setDeletingUser] = useState<UserType | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const { roles, loading: rolesLoading } = useRoles()
   
   // New user form state
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
-    role: 'developer',
+    role: 'developer' as UserRole,
     department: '',
     position: ''
   })
 
-  useEffect(() => {
-    // Simulate loading users data
-    setTimeout(() => {
-      const mockUsers: User[] = [
-        {
-          id: '1',
-          name: 'John Doe',
-          email: 'john.doe@company.com',
-          role: 'developer',
-          status: 'active',
-          lastActive: '2 hours ago',
-          createdAt: '2024-01-15'
-        },
-        {
-          id: '2',
-          name: 'Sarah Wilson',
-          email: 'sarah.wilson@company.com',
-          role: 'team_lead',
-          status: 'active',
-          lastActive: '1 hour ago',
-          createdAt: '2024-01-10'
-        },
-        {
-          id: '3',
-          name: 'Mike Johnson',
-          email: 'mike.johnson@company.com',
-          role: 'developer',
-          status: 'inactive',
-          lastActive: '3 days ago',
-          createdAt: '2024-01-05'
-        },
-        {
-          id: '4',
-          name: 'Emily Brown',
-          email: 'emily.brown@company.com',
-          role: 'project_manager',
-          status: 'active',
-          lastActive: '30 minutes ago',
-          createdAt: '2024-01-12'
-        },
-        {
-          id: '5',
-          name: 'David Lee',
-          email: 'david.lee@company.com',
-          role: 'developer',
-          status: 'active',
-          lastActive: '5 hours ago',
-          createdAt: '2024-01-08'
-        }
-      ]
-      setUsers(mockUsers)
-      setFilteredUsers(mockUsers)
-      setLoading(false)
-    }, 1000)
-  }, [])
+  // Get role names for filter
+  const roleOptions = ['all', ...roles.map(role => role.name)]
 
+  // Fetch users from API
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        search: searchTerm,
+        role: roleFilter === 'all' ? '' : roleFilter,
+        status: statusFilter === 'all' ? '' : statusFilter
+      })
+
+      const response = await fetch(`/api/admin/users?${params}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch users')
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setUsers(result.data.users)
+        setFilteredUsers(result.data.users)
+      } else {
+        throw new Error(result.error || 'Failed to fetch users')
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      setError(error instanceof Error ? error.message : 'Failed to fetch users')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Initial fetch
+  useEffect(() => {
+    fetchUsers()
+  }, [currentPage, searchTerm, roleFilter, statusFilter])
+
+  // Apply filters locally
   useEffect(() => {
     let filtered = users
 
@@ -134,7 +129,6 @@ export default function UserManagement() {
     }
 
     setFilteredUsers(filtered)
-    setCurrentPage(1)
   }, [users, searchTerm, roleFilter, statusFilter])
 
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
@@ -142,21 +136,123 @@ export default function UserManagement() {
   const endIndex = startIndex + itemsPerPage
   const currentUsers = filteredUsers.slice(startIndex, endIndex)
 
-  const getRoleBadgeColor = (role: string) => {
+  // Edit user functionality
+  const handleEditUser = (user: UserType) => {
+    setEditingUser(user)
+    setShowEditModal(true)
+  }
+
+  const handleSaveEdit = async (updatedUser: Partial<UserType>) => {
+    if (!editingUser) return
+
+    try {
+      setError(null)
+      const response = await fetch(`/api/admin/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedUser)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update user')
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Update the user in the local state
+        setUsers(prev => prev.map(user => 
+          user.id === editingUser.id ? { ...user, ...updatedUser } : user
+        ))
+        setFilteredUsers(prev => prev.map(user => 
+          user.id === editingUser.id ? { ...user, ...updatedUser } : user
+        ))
+        
+        setSuccess('User updated successfully!')
+        setEditingUser(null)
+        setShowEditModal(false)
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000)
+      }
+    } catch (error) {
+      console.error('Error updating user:', error)
+      throw new Error(error instanceof Error ? error.message : 'Failed to update user')
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingUser(null)
+    setError(null)
+    setShowEditModal(false)
+  }
+
+  // Delete user functionality
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setDeletingUser({ id: userId } as UserType) // Assuming UserType has an id property
+      setError(null)
+      
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete user')
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Remove the user from local state
+        setUsers(prev => prev.filter(user => user.id !== userId))
+        setFilteredUsers(prev => prev.filter(user => user.id !== userId))
+        
+        setSuccess('User deleted successfully!')
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000)
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      setError(error instanceof Error ? error.message : 'Failed to delete user')
+    } finally {
+      setDeletingUser(null)
+    }
+  }
+
+  const getRoleBadgeColor = (role: string | null) => {
+    if (!role) return 'bg-gray-100 text-gray-800'
     switch (role) {
-      case 'admin': return 'bg-red-100 text-red-800'
-      case 'executive': return 'bg-purple-100 text-purple-800'
-      case 'team_lead': return 'bg-blue-100 text-blue-800'
-      case 'project_manager': return 'bg-green-100 text-green-800'
-      case 'developer': return 'bg-gray-100 text-gray-800'
+      case 'Admin': return 'bg-red-100 text-red-800'
+      case 'Executive': return 'bg-purple-100 text-purple-800'
+      case 'Project Manager': return 'bg-green-100 text-green-800'
+      case 'Developer': return 'bg-gray-100 text-gray-800'
+      case 'Support Lead': return 'bg-blue-100 text-blue-800'
+      case 'Support Agent': return 'bg-indigo-100 text-indigo-800'
+      case 'HR': return 'bg-pink-100 text-pink-800'
+      case 'Sales': return 'bg-yellow-100 text-yellow-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
-  const getStatusBadgeColor = (status: string) => {
-    return status === 'active' 
-      ? 'bg-green-100 text-green-800' 
-      : 'bg-red-100 text-red-800'
+  const getStatusBadgeColor = (status: string | null) => {
+    if (!status) return 'bg-gray-100 text-gray-800'
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800'
+      case 'inactive': return 'bg-red-100 text-red-800'
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'suspended': return 'bg-gray-100 text-gray-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
   }
 
   const handleBulkImport = async () => {
@@ -174,16 +270,17 @@ export default function UserManagement() {
       
       if (response.ok) {
         const result = await response.json()
-        alert(`Successfully imported ${result.imported} users`)
+        setSuccess(`Successfully imported ${result.imported} users`)
         // Refresh users list
-        window.location.reload()
+        fetchUsers()
+        setTimeout(() => setSuccess(null), 3000)
       } else {
         const error = await response.json()
-        alert(`Import failed: ${error.message}`)
+        setError(`Import failed: ${error.message}`)
       }
     } catch (error) {
       console.error('Import error:', error)
-      alert('Import failed. Please try again.')
+      setError('Import failed. Please try again.')
     } finally {
       setImporting(false)
       setShowBulkImport(false)
@@ -192,7 +289,7 @@ export default function UserManagement() {
   }
 
   const downloadTemplate = () => {
-    const csvContent = 'Name,Email,Role,Status\nJohn Doe,john@example.com,developer,active\nJane Smith,jane@example.com,team_lead,active'
+    const csvContent = 'Name,Email,Role,Status\nJohn Doe,john@example.com,Developer,active\nJane Smith,jane@example.com,Project Manager,active'
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -218,22 +315,26 @@ export default function UserManagement() {
         setUsers(prev => prev.map(user => 
           user.id === userId ? { ...user, mfa_enabled: enabled } : user
         ))
+        setFilteredUsers(prev => prev.map(user => 
+          user.id === userId ? { ...user, mfa_enabled: enabled } : user
+        ))
       } else {
-        alert('Failed to update MFA status')
+        setError('Failed to update MFA status')
       }
     } catch (error) {
       console.error('MFA toggle error:', error)
-      alert('Failed to update MFA status')
+      setError('Failed to update MFA status')
     }
   }
 
   const handleCreateUser = async () => {
     if (!newUser.name || !newUser.email || !newUser.role) {
-      alert('Please fill in all required fields')
+      setError('Please fill in all required fields')
       return
     }
 
     setCreatingUser(true)
+    setError(null)
     try {
       const response = await fetch('/api/admin/users', {
         method: 'POST',
@@ -246,38 +347,32 @@ export default function UserManagement() {
       if (response.ok) {
         const createdUser = await response.json()
         
-        // Add the new user to the list
-        const userToAdd: User = {
-          id: createdUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-          status: 'active',
-          lastActive: 'Just now',
-          createdAt: new Date().toISOString().split('T')[0]
+        if (createdUser.success) {
+          // Refresh the users list
+          await fetchUsers()
+          
+          // Reset form and close modal
+          setNewUser({
+            name: '',
+            email: '',
+            role: 'developer',
+            department: '',
+            position: ''
+          })
+          setShowAddUser(false)
+          
+          setSuccess('User created successfully! An invitation email has been sent.')
+          setTimeout(() => setSuccess(null), 3000)
+        } else {
+          throw new Error(createdUser.error || 'Failed to create user')
         }
-        
-        setUsers(prev => [userToAdd, ...prev])
-        setFilteredUsers(prev => [userToAdd, ...prev])
-        
-        // Reset form and close modal
-        setNewUser({
-          name: '',
-          email: '',
-          role: 'developer',
-          department: '',
-          position: ''
-        })
-        setShowAddUser(false)
-        
-        alert('User created successfully! An invitation email has been sent.')
       } else {
         const error = await response.json()
-        alert(`Failed to create user: ${error.message}`)
+        throw new Error(error.message || 'Failed to create user')
       }
     } catch (error) {
       console.error('Create user error:', error)
-      alert('Failed to create user. Please try again.')
+      setError(error instanceof Error ? error.message : 'Failed to create user. Please try again.')
     } finally {
       setCreatingUser(false)
     }
@@ -293,8 +388,9 @@ export default function UserManagement() {
     })
   }
 
-  const formatRole = (role: string) => {
-    return role.split('_').map(word => 
+  const formatRole = (role: string | null) => {
+    if (!role) return 'No Role'
+    return role.split(' ').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ')
   }
@@ -312,6 +408,27 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Success/Error Messages */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-2">
+          <CheckCircle className="h-5 w-5 text-green-600" />
+          <span className="text-green-800">{success}</span>
+        </div>
+      )}
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
+          <AlertCircle className="h-5 w-5 text-red-600" />
+          <span className="text-red-800">{error}</span>
+          <button 
+            onClick={() => setError(null)}
+            className="ml-auto text-red-600 hover:text-red-800"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex items-center justify-between border-b border-gray-200 pb-6">
         <div>
@@ -381,11 +498,9 @@ export default function UserManagement() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="all">All Roles</option>
-                  <option value="admin">Admin</option>
-                  <option value="executive">Executive</option>
-                  <option value="team_lead">Team Lead</option>
-                  <option value="project_manager">Project Manager</option>
-                  <option value="developer">Developer</option>
+                  {roleOptions.filter(role => role !== 'all').map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -398,6 +513,8 @@ export default function UserManagement() {
                   <option value="all">All Status</option>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
+                  <option value="pending">Pending</option>
+                  <option value="suspended">Suspended</option>
                 </select>
               </div>
               <div className="flex items-end">
@@ -463,11 +580,11 @@ export default function UserManagement() {
                     <div className="flex items-center">
                       <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium text-white">
-                          {user.name.split(' ').map(n => n[0]).join('')}
+                          {user.name ? user.name.split(' ').map(n => n[0]).join('') : 'U'}
                         </span>
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                        <div className="text-sm font-medium text-gray-900">{user.name || 'No Name'}</div>
                         <div className="text-sm text-gray-500">{user.email}</div>
                       </div>
                     </div>
@@ -479,7 +596,7 @@ export default function UserManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(user.status)}`}>
-                      {user.status === 'active' ? 'Active' : 'Inactive'}
+                      {user.status === 'active' ? 'Active' : user.status ? user.status.charAt(0).toUpperCase() + user.status.slice(1) : 'Unknown'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -502,24 +619,31 @@ export default function UserManagement() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.lastActive}
+                    {user.lastActive || 'Never'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.createdAt}
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900 p-1">
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button className="text-green-600 hover:text-green-900 p-1">
+                      <button 
+                        onClick={() => handleEditUser(user)}
+                        className="text-indigo-600 hover:text-indigo-900 p-1"
+                        title="Edit user"
+                      >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button className="text-red-600 hover:text-red-900 p-1">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                      <button className="text-gray-400 hover:text-gray-600 p-1">
-                        <MoreHorizontal className="h-4 w-4" />
+                      <button 
+                        onClick={() => handleDeleteUser(user.id)}
+                        disabled={deletingUser?.id === user.id}
+                        className="text-red-600 hover:text-red-900 p-1 disabled:opacity-50"
+                        title="Delete user"
+                      >
+                        {deletingUser?.id === user.id ? (
+                          <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </td>
@@ -701,16 +825,12 @@ export default function UserManagement() {
                     </label>
                     <select
                       value={newUser.role}
-                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="admin">Admin</option>
-                      <option value="executive">Executive</option>
-                      <option value="team_lead">Team Lead</option>
-                      <option value="project_manager">Project Manager</option>
-                      <option value="developer">Developer</option>
-                      <option value="designer">Designer</option>
-                      <option value="analyst">Analyst</option>
+                      {roles.map(role => (
+                        <option key={role.name} value={role.name}>{role.name}</option>
+                      ))}
                     </select>
                   </div>
                   
@@ -771,6 +891,17 @@ export default function UserManagement() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditModal && editingUser && (
+        <UserEditModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          user={editingUser}
+          roles={roles.map(role => ({ id: role.id, name: role.name }))}
+          onSave={handleSaveEdit}
+        />
       )}
     </div>
   )

@@ -1,52 +1,28 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { useNotifications } from '@/components/ui/SimpleNotificationProvider'
-import {
-  Users,
-  TrendingUp,
-  TrendingDown,
+import { 
+  ArrowLeft, 
+  Download, 
+  TrendingUp, 
+  TrendingDown, 
+  Activity, 
+  Users, 
+  Calendar, 
   BarChart3,
-  Download,
-  Filter,
-  Calendar,
-  Building,
-  UserPlus,
-  UserX,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  ChevronLeft,
-  Settings,
   PieChart,
-  LineChart,
-  Activity
+  FileText,
+  Clock,
+  Award
 } from 'lucide-react'
+import { useNotifications } from '@/components/ui/SimpleNotificationProvider'
+import { useRoles } from '@/hooks/useRoles'
 
-// Mock data for HR Reports & Analytics
-const mockHiringTrends = [
-  { month: 'Jan', hired: 8, applied: 45, interviews: 12 },
-  { month: 'Feb', hired: 12, applied: 52, interviews: 18 },
-  { month: 'Mar', hired: 15, applied: 68, interviews: 25 },
-  { month: 'Apr', hired: 10, applied: 41, interviews: 16 },
-  { month: 'May', hired: 18, applied: 75, interviews: 28 },
-  { month: 'Jun', hired: 22, applied: 89, interviews: 35 }
-]
-
-const mockAttritionData = {
-  currentYear: 8.5,
-  previousYear: 12.3,
-  byDepartment: [
-    { department: 'Engineering', rate: 6.2, trend: 'down' },
-    { department: 'Sales', rate: 11.8, trend: 'up' },
-    { department: 'Marketing', rate: 9.1, trend: 'stable' },
-    { department: 'Support', rate: 7.5, trend: 'down' }
-  ]
-}
-
+// Mock data - in real app, this would come from API
 const mockHeadcountData = {
   total: 156,
+  growth: 12.5,
   byDepartment: [
     { department: 'Engineering', count: 48, growth: 12.5 },
     { department: 'Sales', count: 35, growth: 8.3 },
@@ -54,10 +30,12 @@ const mockHeadcountData = {
     { department: 'Support', count: 43, growth: 6.8 }
   ],
   byRole: [
-    { role: 'Individual Contributors', count: 89, percentage: 57.1 },
-    { role: 'Team Leads', count: 34, percentage: 21.8 },
-    { role: 'Managers', count: 22, percentage: 14.1 },
-    { role: 'Executives', count: 11, percentage: 7.0 }
+    { role: 'Developer', count: 45, percentage: 28.8 },
+    { role: 'Project Manager', count: 25, percentage: 16.0 },
+    { role: 'Sales', count: 35, percentage: 22.4 },
+    { role: 'Support Agent', count: 30, percentage: 19.2 },
+    { role: 'HR', count: 15, percentage: 9.6 },
+    { role: 'Executive', count: 6, percentage: 3.8 }
   ]
 }
 
@@ -89,11 +67,39 @@ const mockPerformanceData = {
   reviewCompletion: 87.5
 }
 
+const mockHiringTrends = [
+  { month: 'Jan', hired: 8, applied: 45, interviews: 12 },
+  { month: 'Feb', hired: 12, applied: 52, interviews: 18 },
+  { month: 'Mar', hired: 15, applied: 68, interviews: 25 },
+  { month: 'Apr', hired: 10, applied: 41, interviews: 16 },
+  { month: 'May', hired: 18, applied: 75, interviews: 28 },
+  { month: 'Jun', hired: 22, applied: 89, interviews: 35 }
+]
+
+const mockAttritionData = {
+  currentYear: 8.5,
+  previousYear: 12.3,
+  byDepartment: [
+    { department: 'Engineering', rate: 6.2, trend: 'down' },
+    { department: 'Sales', rate: 11.8, trend: 'up' },
+    { department: 'Marketing', rate: 9.1, trend: 'stable' },
+    { department: 'Support', rate: 7.5, trend: 'down' }
+  ]
+}
+
 export default function HRReportsAnalytics() {
   const [selectedPeriod, setSelectedPeriod] = useState('6months')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [activeTab, setActiveTab] = useState('overview')
   const { addNotification } = useNotifications()
+  const { roles, loading: rolesLoading } = useRoles()
+
+  // Generate dynamic role data based on available roles
+  const dynamicRoleData = roles.map(role => ({
+    role: role.display_name,
+    count: Math.floor(Math.random() * 50) + 5, // Mock count
+    percentage: Math.floor(Math.random() * 30) + 5 // Mock percentage
+  }))
 
   const handleExportReport = (type: string) => {
     addNotification({
@@ -149,7 +155,7 @@ export default function HRReportsAnalytics() {
                 href="/dashboard/hr"
                 className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-2"
               >
-                <ChevronLeft className="w-4 h-4 mr-1" />
+                <ArrowLeft className="w-4 h-4 mr-1" />
                 Back to HR Dashboard
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">HR Reports & Analytics</h1>
@@ -179,7 +185,7 @@ export default function HRReportsAnalytics() {
                 href="/dashboard/hr/settings"
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <Settings className="w-5 h-5" />
+                <Award className="w-5 h-5" />
               </Link>
             </div>
           </div>
@@ -207,7 +213,7 @@ export default function HRReportsAnalytics() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <UserPlus className="w-4 h-4 mr-2 inline" />
+              <Users className="w-4 h-4 mr-2 inline" />
               Hiring Trends
             </button>
             <button
@@ -218,7 +224,7 @@ export default function HRReportsAnalytics() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <UserX className="w-4 h-4 mr-2 inline" />
+              <FileText className="w-4 h-4 mr-2 inline" />
               Attrition Analysis
             </button>
             <button
@@ -256,7 +262,7 @@ export default function HRReportsAnalytics() {
               <div className="bg-white rounded-xl shadow-sm border p-6">
                 <div className="flex items-center">
                   <div className="p-2 bg-green-100 rounded-lg">
-                    <UserPlus className="w-6 h-6 text-green-600" />
+                    <Users className="w-6 h-6 text-green-600" />
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Hired This Year</p>
@@ -269,7 +275,7 @@ export default function HRReportsAnalytics() {
               <div className="bg-white rounded-xl shadow-sm border p-6">
                 <div className="flex items-center">
                   <div className="p-2 bg-yellow-100 rounded-lg">
-                    <UserX className="w-6 h-6 text-yellow-600" />
+                    <FileText className="w-6 h-6 text-yellow-600" />
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Attrition Rate</p>
@@ -335,7 +341,7 @@ export default function HRReportsAnalytics() {
                 </button>
               </div>
               <div className="space-y-4">
-                {mockHeadcountData.byRole.map((role) => (
+                {dynamicRoleData.map((role) => (
                   <div key={role.role} className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-900">{role.role}</span>
                     <div className="flex items-center space-x-3">

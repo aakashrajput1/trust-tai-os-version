@@ -1,68 +1,137 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import { User } from '@/types/admin'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verify admin role (you can implement proper auth middleware later)
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
+    const supabase = createServerComponentClient({ cookies })
+    
+    // Check authentication
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { enabled } = await request.json()
-    const userId = params.id
+    // Check if user has admin role (only Admin can toggle MFA)
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', session.user.id)
+      .single()
 
-    if (typeof enabled !== 'boolean') {
-      return NextResponse.json({ error: 'enabled must be a boolean' }, { status: 400 })
+    if (!userProfile || userProfile.role !== 'Admin') {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Update user's MFA status
-    const { error: updateError } = await supabase
+    const userId = params.id
+
+    // Check if user exists
+    const { data: existingUser, error: fetchError } = await supabase
+      .from('users')
+      .select('id, name, email, mfa_enabled')
+      .eq('id', userId)
+      .single()
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+      throw fetchError
+    }
+
+    // Toggle MFA status
+    const newMfaStatus = !existingUser.mfa_enabled
+
+    // Update user MFA status
+    const { data: updatedUser, error: updateError } = await supabase
       .from('users')
       .update({ 
-        mfa_enabled: enabled,
+        mfa_enabled: newMfaStatus,
         updated_at: new Date().toISOString()
       })
       .eq('id', userId)
+      .select()
+      .single()
 
-    if (updateError) {
-      console.error('MFA update error:', updateError)
-      return NextResponse.json({ error: 'Failed to update MFA status' }, { status: 500 })
+    if (updateError) throw updateError
+
+    // Log the action
+    await logAuditEvent(supabase, {
+      userId: session.user.id,
+      action: 'user_mfa_toggled',
+      resource: 'users',
+      resourceId: userId,
+      details: { 
+        previousMfaStatus: existingUser.mfa_enabled,
+        newMfaStatus: newMfaStatus,
+        targetUserName: existingUser.name,
+        targetUserEmail: existingUser.email
+      }
+    })
+
+    // Transform to User interface
+    const transformedUser: User = {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      status: updatedUser.status,
+      department: updatedUser.department,
+      position: updatedUser.position,
+      mfa_enabled: updatedUser.mfa_enabled || false,
+      lastActive: updatedUser.last_active || updatedUser.updated_at,
+      createdAt: updatedUser.created_at,
+      updatedAt: updatedUser.updated_at,
+      avatar: updatedUser.avatar,
+      phone: updatedUser.phone,
+      location: updatedUser.location,
+      managerId: updatedUser.manager_id,
+      permissions: updatedUser.permissions || [],
+      metadata: updatedUser.metadata
     }
 
-    // Log the MFA change action
-    await supabase
-      .from('audit_logs')
-      .insert({
-        user_id: 'system', // or actual admin user ID
-        action: 'mfa_toggle',
-        details: `MFA ${enabled ? 'enabled' : 'disabled'} for user ${userId}`,
-        ip_address: request.headers.get('x-forwarded-for') || 'unknown',
-        user_agent: request.headers.get('user-agent') || 'unknown',
-        severity: 'medium',
-        category: 'user_management',
-        status: 'success',
-        timestamp: new Date().toISOString()
-      })
-
     return NextResponse.json({
-      message: `MFA ${enabled ? 'enabled' : 'disabled'} successfully`,
-      mfa_enabled: enabled
+      success: true,
+      data: transformedUser,
+      message: `MFA ${newMfaStatus ? 'enabled' : 'disabled'} successfully`
     })
 
   } catch (error) {
-    console.error('MFA toggle error:', error)
+    console.error('Toggle MFA error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
+  }
+}
+
+async function logAuditEvent(supabase: any, eventData: {
+  userId: string
+  action: string
+  resource: string
+  resourceId?: string
+  details: Record<string, any>
+}) {
+  try {
+    await supabase
+      .from('audit_logs')
+      .insert({
+        user_id: eventData.userId,
+        action: eventData.action,
+        resource: eventData.resource,
+        resource_id: eventData.resourceId,
+        details: eventData.details,
+        ip_address: '127.0.0.1', // In real app, get from request
+        user_agent: 'Admin API',
+        severity: 'medium',
+        category: 'security',
+        created_at: new Date().toISOString()
+      })
+  } catch (error) {
+    console.error('Error logging audit event:', error)
   }
 }

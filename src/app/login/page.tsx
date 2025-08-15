@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
+import { LoginPageProtection } from '@/components/ui/LoginPageProtection'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react'
 
 export default function LoginPage() {
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [ssoLoading, setSsoLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [isSignUp, setIsSignUp] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
@@ -63,73 +65,43 @@ export default function LoginPage() {
 
         console.log('Starting signup for:', email)
 
-        // Sign up the user
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${location.origin}/onboarding`,
-            data: {
-              name: name.trim(),
-            },
+        // Use our custom signup API instead of Supabase auth
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
           },
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email,
+            password: password,
+            role: 'user' // Default role for login page signup
+          })
         })
 
-        console.log('Signup response:', { data: signUpData, error: signUpError })
+        const signUpData = await response.json()
+        console.log('Signup response:', signUpData)
 
-        if (signUpError) {
-          console.error('Signup error:', signUpError)
-          setError(signUpError.message)
+        if (!response.ok) {
+          console.error('Signup error:', signUpData.error)
+          setError(signUpData.error || 'Signup failed')
           return
         }
 
-        if (signUpData.user) {
-          console.log('User created:', signUpData.user.id)
+        if (signUpData.success) {
+          console.log('Signup successful, pending admin approval')
+          setSuccess('Signup successful! Your account is pending admin approval. You will receive an email notification once approved.')
           
-          // Wait a moment for trigger to execute
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          // Clear form
+          setEmail('')
+          setPassword('')
+          setName('')
+          setIsSignUp(false)
           
-          // Check if profile was created
-          const { data: userProfile, error: profileError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', signUpData.user.id)
-            .single()
-
-          console.log('Profile check:', { userProfile, profileError })
-
-          // If profile doesn't exist, create manually with proper auth context
-          if (profileError && profileError.code === 'PGRST116') {
-            console.log('Creating profile manually...')
-            
-            // Try creating with current auth context
-            const { error: createError } = await supabase
-              .from('users')
-              .insert({
-                id: signUpData.user.id,
-                email: email,
-                name: name.trim(),
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-
-            if (createError) {
-              console.error('Manual profile creation error:', createError)
-              // Don't fail completely, just log and continue
-              console.log('Profile creation failed but continuing with signup...')
-            } else {
-              console.log('Profile created manually')
-            }
-          }
-          
-          // Check if email confirmation is needed
-          if (signUpData.user.email_confirmed_at || signUpData.user.confirmed_at) {
-            console.log('Email confirmed, redirecting...')
-            router.push('/onboarding')
-          } else {
-            console.log('Email confirmation required')
-            setError('Check your email for a confirmation link!')
-          }
+          // Show success message for 5 seconds
+          setTimeout(() => {
+            setSuccess(null)
+          }, 5000)
         }
       } else {
         // Sign In Logic
@@ -229,7 +201,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <LoginPageProtection>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
@@ -353,6 +326,13 @@ export default function LoginPage() {
               </div>
             )}
 
+            {/* Success message */}
+            {success && (
+              <div className="bg-green-50 border-green-200 border rounded-xl p-4">
+                <p className="text-sm text-green-600">{success}</p>
+              </div>
+            )}
+
             {/* Submit button */}
             <Button
               type="submit"
@@ -444,5 +424,6 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+    </LoginPageProtection>
   )
 }

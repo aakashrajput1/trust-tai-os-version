@@ -5,18 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, Save, Download } from 'lucide-react'
+import { Select } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Plus, Trash2, Settings, DollarSign, Clock, Users } from 'lucide-react'
+import { useRoles } from '@/hooks/useRoles'
 
-interface BillableRule {
+interface BillingRule {
   id?: string
-  type: string
   name: string
-  condition: string
-  value: string
-  isBillable: boolean
+  description: string
+  rate: number
+  type: 'hourly' | 'fixed' | 'percentage'
+  isActive: boolean
 }
 
 interface BillingRate {
@@ -27,92 +28,81 @@ interface BillingRate {
 }
 
 interface BillableSettings {
-  default_hourly_rate: number
-  overtime_multiplier: number
-  holiday_multiplier: number
-  rules: BillableRule[]
+  rules: BillingRule[]
   rates: BillingRate[]
+  autoBilling: boolean
+  taxRate: number
+  currency: string
 }
 
-export default function BillableHoursPage() {
+export default function BillableSettingsPage() {
   const [settings, setSettings] = useState<BillableSettings>({
-    default_hourly_rate: 50,
-    overtime_multiplier: 1.5,
-    holiday_multiplier: 2.0,
     rules: [],
-    rates: []
+    rates: [],
+    autoBilling: false,
+    taxRate: 0,
+    currency: 'USD'
   })
-  
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [newRule, setNewRule] = useState<BillableRule>({
-    type: 'role',
+
+  const [newRule, setNewRule] = useState<BillingRule>({
     name: '',
-    condition: '',
-    value: '',
-    isBillable: true
+    description: '',
+    rate: 0,
+    type: 'hourly',
+    isActive: true
   })
-  
+
   const [newRate, setNewRate] = useState<BillingRate>({
     roleId: '',
     projectType: '',
     hourlyRate: 0
   })
 
+  const { roles, loading: rolesLoading } = useRoles()
+
+  // Get role names for billing rates
+  const roleOptions = roles.map(role => ({
+    value: role.name,
+    label: role.display_name
+  }))
+
   useEffect(() => {
-    fetchSettings()
+    // Load settings from API
+    loadSettings()
   }, [])
 
-  const fetchSettings = async () => {
+  const loadSettings = async () => {
     try {
       const response = await fetch('/api/admin/billable-settings')
       if (response.ok) {
         const data = await response.json()
-        setSettings(data.settings)
+        setSettings(data)
       }
     } catch (error) {
-      console.error('Error fetching settings:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const saveSettings = async () => {
-    setSaving(true)
-    try {
-      const response = await fetch('/api/admin/billable-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
-      })
-      
-      if (response.ok) {
-        alert('Settings saved successfully!')
-      } else {
-        alert('Error saving settings')
-      }
-    } catch (error) {
-      console.error('Error saving settings:', error)
-      alert('Error saving settings')
-    } finally {
-      setSaving(false)
+      console.error('Error loading billable settings:', error)
     }
   }
 
   const addRule = () => {
-    if (newRule.name && newRule.condition && newRule.value) {
-      setSettings(prev => ({
-        ...prev,
-        rules: [...prev.rules, { ...newRule, id: Date.now().toString() }]
-      }))
-      setNewRule({
-        type: 'role',
-        name: '',
-        condition: '',
-        value: '',
-        isBillable: true
-      })
+    if (!newRule.name || newRule.rate <= 0) return
+
+    const rule: BillingRule = {
+      ...newRule,
+      id: Date.now().toString()
     }
+
+    setSettings(prev => ({
+      ...prev,
+      rules: [...prev.rules, rule]
+    }))
+
+    setNewRule({
+      name: '',
+      description: '',
+      rate: 0,
+      type: 'hourly',
+      isActive: true
+    })
   }
 
   const removeRule = (id: string) => {
@@ -123,17 +113,23 @@ export default function BillableHoursPage() {
   }
 
   const addRate = () => {
-    if (newRate.roleId && newRate.projectType && newRate.hourlyRate > 0) {
-      setSettings(prev => ({
-        ...prev,
-        rates: [...prev.rates, { ...newRate, id: Date.now().toString() }]
-      }))
-      setNewRate({
-        roleId: '',
-        projectType: '',
-        hourlyRate: 0
-      })
+    if (!newRate.roleId || !newRate.projectType || newRate.hourlyRate <= 0) return
+
+    const rate: BillingRate = {
+      ...newRate,
+      id: Date.now().toString()
     }
+
+    setSettings(prev => ({
+      ...prev,
+      rates: [...prev.rates, rate]
+    }))
+
+    setNewRate({
+      roleId: '',
+      projectType: '',
+      hourlyRate: 0
+    })
   }
 
   const removeRate = (id: string) => {
@@ -143,166 +139,158 @@ export default function BillableHoursPage() {
     }))
   }
 
-  const exportSettings = () => {
-    const dataStr = JSON.stringify(settings, null, 2)
-    const dataBlob = new Blob([dataStr], { type: 'application/json' })
-    const url = URL.createObjectURL(dataBlob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'billable-settings.json'
-    link.click()
-    URL.revokeObjectURL(url)
-  }
+  const saveSettings = async () => {
+    try {
+      const response = await fetch('/api/admin/billable-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(settings)
+      })
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>
+      if (response.ok) {
+        alert('Settings saved successfully!')
+      } else {
+        alert('Failed to save settings')
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      alert('Error saving settings')
+    }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Billable Hours Settings</h1>
-          <p className="text-muted-foreground">
-            Configure billing rules, rates, and multipliers for your organization
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">Billable Settings</h1>
+          <p className="text-gray-600 mt-2">Configure billing rules, rates, and automation</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportSettings}>
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button onClick={saveSettings} disabled={saving}>
-            <Save className="w-4 h-4 mr-2" />
-            {saving ? 'Saving...' : 'Save Settings'}
-          </Button>
-        </div>
+        <Button onClick={saveSettings} className="bg-blue-600 hover:bg-blue-700">
+          <Settings className="w-4 h-4 mr-2" />
+          Save Settings
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Basic Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Settings</CardTitle>
-            <CardDescription>Default rates and multipliers</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* General Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>General Settings</CardTitle>
+          <CardDescription>Basic billing configuration</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="defaultRate">Default Hourly Rate ($)</Label>
+              <Label htmlFor="currency">Currency</Label>
+              <Select 
+                value={settings.currency} 
+                onChange={(e) => setSettings(prev => ({ ...prev, currency: e.target.value }))}
+              >
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="INR">INR (₹)</option>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="taxRate">Tax Rate (%)</Label>
               <Input
-                id="defaultRate"
+                id="taxRate"
                 type="number"
-                value={settings.default_hourly_rate}
-                onChange={(e) => setSettings(prev => ({
-                  ...prev,
-                  default_hourly_rate: parseFloat(e.target.value) || 0
-                }))}
-                placeholder="50.00"
+                value={settings.taxRate}
+                onChange={(e) => setSettings(prev => ({ ...prev, taxRate: parseFloat(e.target.value) || 0 }))}
+                placeholder="0.00"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="overtimeMultiplier">Overtime Multiplier</Label>
+              <Label htmlFor="autoBilling">Auto Billing</Label>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="autoBilling"
+                  checked={settings.autoBilling}
+                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, autoBilling: checked }))}
+                />
+                <span className="text-sm text-gray-600">Enable automatic billing</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Billing Rules */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing Rules</CardTitle>
+          <CardDescription>Define custom billing rules and policies</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="ruleName">Rule Name</Label>
               <Input
-                id="overtimeMultiplier"
+                id="ruleName"
+                value={newRule.name}
+                onChange={(e) => setNewRule(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Overtime Rate"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="ruleDescription">Description</Label>
+              <Input
+                id="ruleDescription"
+                value={newRule.description}
+                onChange={(e) => setNewRule(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="1.5x rate for overtime"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="ruleRate">Rate</Label>
+              <Input
+                id="ruleRate"
                 type="number"
-                step="0.1"
-                value={settings.overtime_multiplier}
-                onChange={(e) => setSettings(prev => ({
-                  ...prev,
-                  overtime_multiplier: parseFloat(e.target.value) || 1.0
-                }))}
+                value={newRule.rate}
+                onChange={(e) => setNewRule(prev => ({ ...prev, rate: parseFloat(e.target.value) || 0 }))}
                 placeholder="1.5"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="holidayMultiplier">Holiday Multiplier</Label>
-              <Input
-                id="holidayMultiplier"
-                type="number"
-                step="0.1"
-                value={settings.holiday_multiplier}
-                onChange={(e) => setSettings(prev => ({
-                  ...prev,
-                  holiday_multiplier: parseFloat(e.target.value) || 2.0
-                }))}
-                placeholder="2.0"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Billing Rules */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Billing Rules</CardTitle>
-            <CardDescription>Define when hours are billable</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-2">
-                <Label htmlFor="ruleType">Rule Type</Label>
-                <Select 
-                  value={newRule.type} 
-                  onChange={(e) => setNewRule(prev => ({ ...prev, type: e.target.value }))}
-                >
-                  <option value="role">Role-based</option>
-                  <option value="project_type">Project Type</option>
-                  <option value="time_of_day">Time of Day</option>
-                  <option value="day_of_week">Day of Week</option>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="ruleName">Rule Name</Label>
-                <Input
-                  id="ruleName"
-                  value={newRule.name}
-                  onChange={(e) => setNewRule(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Weekend Work"
-                />
-              </div>
+              <Label htmlFor="ruleType">Type</Label>
+              <Select 
+                value={newRule.type} 
+                onChange={(e) => setNewRule(prev => ({ ...prev, type: e.target.value as 'hourly' | 'fixed' | 'percentage' }))}
+              >
+                <option value="hourly">Hourly</option>
+                <option value="fixed">Fixed</option>
+                <option value="percentage">Percentage</option>
+              </Select>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="ruleCondition">Condition</Label>
-              <Input
-                id="ruleCondition"
-                value={newRule.condition}
-                onChange={(e) => setNewRule(prev => ({ ...prev, condition: e.target.value }))}
-                placeholder="e.g., day_of_week in ['Saturday', 'Sunday']"
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-2">
-                <Label htmlFor="ruleValue">Value</Label>
-                <Input
-                  id="ruleValue"
-                  value={newRule.value}
-                  onChange={(e) => setNewRule(prev => ({ ...prev, value: e.target.value }))}
-                  placeholder="e.g., 0.5"
-                />
-              </div>
-              
-              <div className="flex items-center space-x-2 pt-6">
+              <Label htmlFor="ruleActive">Active</Label>
+              <div className="flex items-center space-x-2">
                 <Switch
-                  id="isBillable"
-                  checked={newRule.isBillable}
-                  onChange={(e) => setNewRule(prev => ({ ...prev, isBillable: e.target.checked }))}
+                  id="ruleActive"
+                  checked={newRule.isActive}
+                  onCheckedChange={(checked) => setNewRule(prev => ({ ...prev, isActive: checked }))}
                 />
-                <Label htmlFor="isBillable">Billable</Label>
+                <span className="text-sm text-gray-600">Enable rule</span>
               </div>
             </div>
-            
-            <Button onClick={addRule} className="w-full">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Rule
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          
+          <Button onClick={addRule} className="w-full">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Rule
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Existing Rules */}
       {settings.rules.length > 0 && (
@@ -317,13 +305,17 @@ export default function BillableHoursPage() {
                 <div key={rule.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <Badge variant={rule.isBillable ? "default" : "secondary"}>
-                        {rule.isBillable ? "Billable" : "Non-billable"}
-                      </Badge>
                       <span className="font-medium">{rule.name}</span>
+                      <Badge variant={rule.isActive ? "default" : "secondary"}>
+                        {rule.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                      <Badge variant="outline">{rule.type}</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {rule.type}: {rule.condition} = {rule.value}
+                      {rule.description}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Rate: {rule.rate} {rule.type === 'percentage' ? '%' : rule.type === 'hourly' ? 'x' : ''}
                     </p>
                   </div>
                   <Button
@@ -355,10 +347,9 @@ export default function BillableHoursPage() {
                 onChange={(e) => setNewRate(prev => ({ ...prev, roleId: e.target.value }))}
               >
                 <option value="">Select role</option>
-                <option value="developer">Developer</option>
-                <option value="designer">Designer</option>
-                <option value="manager">Manager</option>
-                <option value="analyst">Analyst</option>
+                {roleOptions.map(role => (
+                  <option key={role.value} value={role.value}>{role.label}</option>
+                ))}
               </Select>
             </div>
             
@@ -400,26 +391,29 @@ export default function BillableHoursPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {settings.rates.map((rate) => (
-                <div key={rate.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{rate.projectType}</span>
-                      <Badge variant="outline">{rate.roleId}</Badge>
+              {settings.rates.map((rate) => {
+                const roleName = roleOptions.find(r => r.value === rate.roleId)?.label || rate.roleId
+                return (
+                  <div key={rate.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{rate.projectType}</span>
+                        <Badge variant="outline">{roleName}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        ${rate.hourlyRate}/hour
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      ${rate.hourlyRate}/hour
-                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeRate(rate.id!)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeRate(rate.id!)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>

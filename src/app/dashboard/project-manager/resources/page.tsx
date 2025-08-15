@@ -4,20 +4,19 @@ import { useState } from 'react'
 import { 
   Search, 
   Filter, 
-  Download,
-  Calendar,
-  Users,
-  Clock,
+  Calendar, 
+  Users, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  Clock, 
   TrendingUp,
-  TrendingDown,
   MoreHorizontal,
-  User,
-  Mail,
-  Phone,
-  MapPin
+  Eye,
+  Edit,
+  MessageSquare
 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import ProjectManagerNav from '@/components/ui/ProjectManagerNav'
+import { useRoles } from '@/hooks/useRoles'
 
 interface Resource {
   id: string
@@ -47,12 +46,16 @@ export default function ResourcesPage() {
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [viewMode, setViewMode] = useState<'weekly' | 'monthly'>('weekly')
   const [searchQuery, setSearchQuery] = useState('')
+  const { roles, loading: rolesLoading } = useRoles()
+
+  // Get role names for filter
+  const roleOptions = ['all', ...roles.map(role => role.display_name)]
 
   const resources: Resource[] = [
     {
       id: '1',
       name: 'John Developer',
-      role: 'Senior Developer',
+      role: 'Developer',
       email: 'john@company.com',
       phone: '+1 (555) 123-4567',
       location: 'San Francisco, CA',
@@ -170,8 +173,7 @@ export default function ResourcesPage() {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-green-50">
-      <ProjectManagerNav />
-      
+      {/* ProjectManagerNav */}
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto">
@@ -188,10 +190,11 @@ export default function ResourcesPage() {
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                  <Button variant="outline" className="flex items-center justify-center space-x-2 w-full sm:w-auto">
-                    <Download className="w-4 h-4" />
+                  {/* Export Button */}
+                  <button className="flex items-center justify-center space-x-2 w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    <Calendar className="w-4 h-4" />
                     <span>Export</span>
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>
@@ -235,12 +238,9 @@ export default function ResourcesPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     >
                       <option value="all">All Roles</option>
-                      <option value="Senior Developer">Senior Developer</option>
-                      <option value="UI/UX Designer">UI/UX Designer</option>
-                      <option value="QA Engineer">QA Engineer</option>
-                      <option value="DevOps Engineer">DevOps Engineer</option>
-                      <option value="UX Researcher">UX Researcher</option>
-                      <option value="Backend Developer">Backend Developer</option>
+                      {roleOptions.map(role => (
+                        <option key={role} value={role}>{role}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -405,10 +405,10 @@ export default function ResourcesPage() {
                       <Phone className="w-4 h-4 text-gray-400" />
                       <span className="text-sm text-gray-500">{resource.phone}</span>
                     </div>
-                    <Button variant="outline" size="sm" className="flex items-center justify-center space-x-2">
+                    <button className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                       <Users className="w-4 h-4" />
                       <span>View Details</span>
-                    </Button>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -422,14 +422,14 @@ export default function ResourcesPage() {
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No resources found</h3>
                 <p className="text-gray-500 mb-6">Try adjusting your search or filter criteria.</p>
-                <Button onClick={() => {
+                <button onClick={() => {
                   setSearchQuery('')
                   setSelectedDepartment('all')
                   setSelectedRole('all')
                   setSelectedStatus('all')
-                }}>
+                }} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                   Clear Filters
-                </Button>
+                </button>
               </div>
             )}
           </div>
